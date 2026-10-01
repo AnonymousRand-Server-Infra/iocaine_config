@@ -1,0 +1,12 @@
+[Unit]
+Description=deploy iocaine
+After=network.target
+
+[Service]
+User=ubuntu
+Group=docker
+WorkingDirectory=[REPLACE: absolute path to `iocaine/` folder]
+ExecStart=/usr/bin/env bash deploy.sh
+
+[Install]
+WantedBy=multi-user.target

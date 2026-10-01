@@ -1,0 +1,11 @@
+[Unit]
+Description=timer for `iocaine_update_ai_robots_txt`
+After=network.target
+
+[Timer]
+OnUnitActiveSec=1w
+OnBootSec=1w
+Persistent=true
+
+[Install]
+WantedBy=timers.target

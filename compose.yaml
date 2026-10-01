@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: Gergely Nagy
+# SPDX-FileContributor: Gergely Nagy
+#
+# SPDX-License-Identifier: MIT
+
+services:
+  iocaine:
+    image: git.madhouse-project.org/iocaine/iocaine:3
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:42069:42069'
+      - '127.0.0.1:42042:42042' # for metrics
+    volumes:
+      - ./data:/data
+      - iocaine-state:/run/iocaine
+    command: --config-path /data/etc/config.d
+    environment:
+      - RUST_LOG=iocaine=info
+
+volumes:
+  iocaine-state:
