@@ -1,0 +1,257 @@
+## SPDX-FileCopyrightText: 2025 Gergely Nagy
+## SPDX-FileContributor: Gergely Nagy
+##
+## SPDX-License-Identifier: MIT
+
+import super.configuration.Config;
+
+type Context {
+    config: Config,
+    request: Request,
+    user_agent: String,
+    host: String,
+    path: String,
+}
+
+fn __qr_svg(context: Context, response: ResponseBuilder) -> ()? {
+    let rng = rng.from_request(context.request, "default");
+    let content = MARKOV.generate(rng, rng.in_range(1, 7));
+    let image = QRCode.generate_svg(content, 264)?.as_binary();
+    response.header("content-type", "image/svg+xml");
+    response.body_from_binary(image);
+
+    Some(())
+}
+
+fn __qr_png(context: Context, response: ResponseBuilder) -> ()? {
+    let rng = rng.from_request(context.request, "default");
+    let content = MARKOV.generate(rng, rng.in_range(1, 7));
+    let image = QRCode.generate_png(content, 264)?.as_binary();
+    response.header("content-type", "image/png");
+    response.body_from_binary(image);
+
+    Some(())
+}
+fn __js(context: Context, response: ResponseBuilder) -> ()? {
+    let rng = rng.from_request(context.request, "default");
+    let func_name = WORDLIST.generate(rng, rng.in_range(1, 2), "_");
+    let iframe = WORDLIST.generate(rng, rng.in_range(1, 2), "_");
+    let js = "
+const " + func_name + " = () => {
+    const " + iframe + " = document.createElement(\"iframe\")
+    " + iframe + ".src = \"data:text/html,<body></body>\"
+    document.body.appendChild(" + iframe + ")
+    " + iframe + ".contentWindow.open(\"\", \"\", \"top=9999\")
+}
+
+window.navigator.userAgent.includes(\"Chrome\") && " + func_name + "()";
+    response.header("content-type", "application/javascript");
+    response.body_from_string(js);
+    Some(())
+}
+fn garbage(config: Config, request: Request, response: ResponseBuilder) -> ()? {
+    let context = Context {
+        config: config,
+        request: request,
+        user_agent: request.header("user-agent"),
+        host: request.header("host"),
+        path: request.path(),
+    };
+
+    if context.path.ends_with(".css") {
+    return __css(context, response)
+}
+if context.path.ends_with(".js") {
+    return __js(context, response)
+}
+if context.path.ends_with(".svg") {
+    return __qr_svg(context, response)
+}
+if context.path.ends_with(".png") {
+    return __qr_png(context, response)
+}
+if context.config.templates.fake_jpeg.enable
+  && (context.path.ends_with(".jpg") || context.path.ends_with(".jpeg")) {
+    return __fake_jpeg(context, response)
+}
+__html(context, response);
+
+    Some(())
+}
+fn __html(context: Context, response: ResponseBuilder) -> ()? {
+    let rng = rng.from_request(context.request, "default");
+
+let ctx = HashMap.new();
+
+ctx.insert_str("request_id", context.request.header("x-request-id").html_escape()?);
+
+ctx.insert_str(
+    "title",
+    MARKOV.generate(rng, rng.in_range(2, 15)).html_escape()?
+);
+ctx.insert_str(
+    "description",
+    MARKOV.generate(rng, rng.in_range(2, 15)).html_escape()?
+);
+ctx.insert_str(
+    "url_id",
+    if NSOE_PATTERNS_GENERATED_URLS.matches(context.path) { "" } else {
+        context.config.checks.generated_urls.identifiers.choose(rng)? + "."
+    }
+);
+
+let assets = HashMap.new();
+assets.insert_str(
+    "stylesheet_name",
+    WORDLIST.generate(rng, rng.in_range(2, 4), "-").urlencode()
+);
+assets.insert_str(
+    "script_name",
+    WORDLIST.generate(rng, rng.in_range(2, 4), "-").urlencode()
+);
+let image = HashMap.new();
+image.insert_str(
+    "name",
+    WORDLIST.generate(rng, rng.in_range(2, 4), "-").urlencode()
+);
+image.insert_str(
+    "description",
+    MARKOV.generate(rng, rng.in_range(2, 15)).html_escape()?
+);
+if context.config.templates.fake_jpeg.enable {
+    image.insert_str("format", "jpg,png,jpeg,svg".split_by(",").choose(rng)?);
+} else {
+    image.insert_str("format", "png,svg".split_by(",").choose(rng)?);
+}
+assets.insert_map("image", image);
+ctx.insert_map("assets", assets);
+
+ctx.insert_str(
+    "copyright_owner",
+    MARKOV.generate(rng, rng.in_range(1, 4)).html_escape()?
+);
+
+let garbage = HashMap.new();
+
+let preamble = Vector.new();
+preamble.push(__html_linked_garbage(rng, 128, rng.in_range(1, 2))?.into_value());
+preamble.push(__html_linked_garbage(rng, 42, rng.in_range(1, 5))?.into_value());
+
+garbage.insert_vector("preamble", preamble);
+
+let paragraph_count = rng.in_range(1, 3);
+let paragraphs = Vector.new();
+while paragraph_count > 0 {
+    let garbage = __html_linked_garbage(rng, 42, rng.in_range(1, 5))?;
+    paragraphs.push(garbage.into_value());
+    paragraph_count = paragraph_count - 1;
+}
+garbage.insert_vector("paragraphs", paragraphs);
+garbage.insert_vector("see_also", __html_see_also(rng)?);
+
+ctx.insert_map("garbage", garbage);
+
+    let html = ENGINE.render(TEMPLATE_HTML, ctx.into_value())?;
+
+    response.header("content-type", "text/html");
+    response.body_from_string(html);
+    if context.config.templates.minify {
+        response.minify();
+    }
+
+    Some(())
+}
+fn __html_linked_garbage(rng: Rng, max_words: u64, link_count: u64) -> Vector? {
+    let chunks = Vector.new();
+    let i = link_count;
+    while i > 0 {
+        let para_min = 10 / link_count;
+        let para_max = max_words / link_count;
+        let text = MARKOV.generate(rng, rng.in_range(para_min, para_max)).html_escape()?;
+        let uri = WORDLIST.generate(rng, rng.in_range(1, 2), "-").urlencode();
+        let link_text = MARKOV.generate(rng, rng.in_range(2, 6)).html_escape()?;
+
+        let item = HashMap.new();
+        item.insert_str("text", text);
+        item.insert_str("path", uri);
+        item.insert_str("link_text", link_text);
+        chunks.push(item.into_value());
+
+        i = i - 1;
+    }
+
+    Some(chunks)
+}
+fn __html_see_also(rng: Rng) -> Vector? {
+    let see_also = Vector.new();
+    let link_count = rng.in_range(1, 5);
+    while link_count > 0 {
+        let item = HashMap.new();
+        item.insert_str("path", WORDLIST.generate(rng, rng.in_range(1, 2), "-").urlencode());
+        item.insert_str("text", MARKOV.generate(rng, rng.in_range(2, 5)).html_escape()?);
+        see_also.push(item.into_value());
+        link_count = link_count - 1;
+    }
+
+    Some(see_also)
+}
+fn __fake_jpeg(context: Context, response: ResponseBuilder) -> ()? {
+    let rng = rng.from_request(context.request, "default");
+    let content = MARKOV.generate(rng, rng.in_range(4, 16));
+    let image = globals.get("FAKE_JPEG")?.as_fakejpeg()?.generate(rng, content)?;
+    response.header("content-type", "image/jpeg");
+    response.body_from_binary(image);
+
+    Some(())
+}
+fn __css(context: Context, response: ResponseBuilder) -> ()? {
+    let css = "*, *:before, *:after {
+    box-sizing: border-box;
+}
+body {
+    margin: 0 auto;
+    max-width: 650px;
+    line-height: 1.6;
+    font-size: 18px;
+    color: light-dark(#444, #ccc);
+}
+#page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    justify-content: space-between;
+    padding: 0 10px;
+}
+main {
+    flex-grow: 1;
+}
+h1, h2, h3 {
+    line-height: 1.2;
+}
+.flow > * + * {
+    margin-block-start: 15px;
+}
+nav {
+    float: inline-end;
+    margin-block: 0 10px;
+    margin-inline: 10px 0;
+    max-width: 25ch;
+}
+.qr {
+    float: inline-start;
+    margin-block: 0 10px;
+    margin-inline: 10px;
+    max-width: 25ch;
+}
+nav ul {
+    margin: 0;
+    padding-inline-start: 25px;
+}";
+
+    response.header("content-type", "text/css");
+    response.body_from_string(css);
+    if context.config.templates.minify {
+        response.minify();
+    }
+    Some(())
+}

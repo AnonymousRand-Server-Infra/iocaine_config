@@ -1,0 +1,108 @@
+## SPDX-FileCopyrightText: 2025 Gergely Nagy
+## SPDX-FileContributor: Gergely Nagy
+##
+## SPDX-License-Identifier: MIT
+
+fn __is_fedi_software(request: Request, user_agent: String) -> bool {
+    let referrer = request.header("referer");
+
+    if NSOE_CLASSIFY_PATTERNS_FEDI_SOFTWARE.matches(user_agent) {
+        return true;
+    }
+    if referrer == "https://phanpy.social"
+      || referrer == "https://masto-fe.superseriousbusiness.org/"
+    {
+        return true
+    }
+    if request.header("accept").contains("application/activity+json") {
+        return true
+    }
+
+    let host = request.header("host");
+    if NSOE_CLASSIFY_PATTERNS_FEDI_SOFTWARE_MASTODON_FRONTEND_HOSTS.matches(host)
+      && (request.path().starts_with("/packs/")
+          || request.path().starts_with("/css/")
+          || request.path().starts_with("/sounds/")
+          || request.path().starts_with("/emoji/")
+          || referrer.starts_with("https://" + host)) {
+        return true
+    }
+
+    return false;
+}
+
+fn classify(
+    config: super.configuration.Config,
+    request: Request,
+    metadata: HashMap,
+) -> String? {
+    let user_agent = request.header("user-agent");
+
+    if __is_fedi_software(request, user_agent) {
+        return Some("fediverse-software")
+    }
+    if NSOE_CLASSIFY_PATTERNS_COMM_SOFTWARE.matches(user_agent)
+      || request.path().starts_with("/_matrix/") {
+        return Some("communication-software")
+    }
+    
+    if NSOE_CLASSIFY_PATTERNS_TOOLS_AND_SERVICES.matches(user_agent)
+      || request.path().starts_with("/ocs/v2.php/apps/") {
+        return Some("tools-and-services")
+    }
+    
+    if NSOE_CLASSIFY_PATTERNS_FEED_READERS.matches(user_agent) {
+        return Some("feed-readers")
+    }
+
+    if metadata.get("verdict.type")?.as_str()? == "accept" {
+      if NSOE_CLASSIFY_BADDIES_CLAUDE.matches(user_agent) {
+          return Some("Claude")
+      }
+      if NSOE_CLASSIFY_BADDIES_OPENAI.matches(user_agent) {
+          return Some("OpenAI")
+      }
+      if NSOE_CLASSIFY_BADDIES_FACEBOOK.matches(user_agent) {
+          return Some("Facebook")
+      }
+      if NSOE_CLASSIFY_BADDIES_GOOGLE.matches(user_agent) {
+          return Some("Google")
+      }
+      if NSOE_CLASSIFY_BADDIES_AMAZON.matches(user_agent) {
+          return Some("Amazon")
+      }
+      if NSOE_CLASSIFY_BADDIES_PERPLEXITY.matches(user_agent) {
+          return Some("Perplexity")
+      }
+      let ruleset = metadata.get("ruleset")?.as_str()?;
+      if ruleset == "faked-browser" || ruleset == "fake-user-agent" {
+          return Some("Disguised bots")
+      }
+      if ruleset == "commercial-scrapers" {
+          return Some("Commercial scrapers")
+      }
+      if ruleset == "cgi-bin-trap" {
+          return Some("Enthusiastic guestbook visitors")
+      }
+      if ruleset == "demo" {
+          return Some("Curious demo crawlers")
+      }
+      if ruleset == "cookie-monster" {
+          return Some("Cookie Monster food")
+      }
+      if ruleset == "generated-url" {
+      	return Some("Aggressive maze explorers")
+      }
+      if ruleset == "asn" {
+          let asn = metadata.get("asn")?.as_str()?;
+          if NSOE_GEOIP_ASN_ALIBABA.matches(asn) {
+              return Some("Alibaba");
+          }
+          if NSOE_GEOIP_ASN_HUAWEI.matches(asn) {
+              return Some("Huawei");
+          }
+      }
+    }
+
+    return Some("Other")
+}

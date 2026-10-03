@@ -1,0 +1,804 @@
+## SPDX-FileCopyrightText: 2025 Gergely Nagy
+## SPDX-FileContributor: Gergely Nagy
+##
+## SPDX-License-Identifier: MIT
+
+fn incantation(request: Request) -> String? {
+    let config = configuration.from_globals()?;
+    let metadata = HashMap.new();
+    let decision = detect.detect(config, request, metadata);
+
+    if config.logging.enable {
+        let request_id = request.header("x-request-id");
+        if request_id != "" {
+            metadata.insert_str("request-id", request.header("x-request-id"));
+        }
+        if not metadata.has("request") {
+            let req = HashMap.new();
+            let headers = HashMap.new();
+            headers.insert_str("host", request.header("host"));
+            headers.insert_str("user-agent", request.header("user-agent"));
+            headers.insert_str("x-forwarded-for", request.header("x-forwarded-for"));
+            headers.insert_str("priority", request.header("priority"));
+            let sfm = request.header("sec-fetch-mode");
+            if sfm != "" {
+                headers.insert_str("sec-fetch-mode", sfm);
+            }
+            let sfd = request.header("sec-fetch-dest");
+            if sfd != "" {
+                headers.insert_str("sec-fetch-dest", sfd);
+            }
+            let secchua = request.header("sec-ch-ua");
+            if secchua != "" {
+                headers.insert_str("sec-ch-ua", secchua);
+                headers.insert_str("sec-ch-ua-platform", request.header("sec-ch-ua-platform"));
+            }
+            let xrw = request.header("x-requested-with");
+            if xrw != "" {
+                headers.insert_str("x-requested-with", xrw);
+            }
+    
+            req.insert_map("header", headers);
+            req.insert_str("method", request.method());
+            req.insert_str("path", request.path());
+    
+            metadata.insert_map("request", req);
+        }
+    
+        if config.logging.classification.enable {
+            let classification = classify.classify(config, request, metadata)?;
+            metadata.insert_str("classification", classification);
+        
+            METRIC_REQUEST_DISTRIBUTION.inc_for2(classification, metadata.get("verdict.outcome")?.as_str()?);
+        }
+    
+        metadata.insert_str("_msg", "handling request");
+        metadata.insert_str("service", "nam-shub-of-enki");
+        Logger.stdout(metadata.into_value().to_json()?)
+    }
+    let ruleset = metadata.get("ruleset")?.as_str()?;
+    let xff = request.header("x-forwarded-for");
+    if xff != "" && FIREWALLED_RULESETS.matches(ruleset) {
+        Firewall.block(xff);
+    }
+
+    return decision
+}
+fn utterance(request: Request, decision: String?) -> Response? {
+    let config = configuration.from_globals()?;
+    return responses.generate(config, request, decision);
+}
+test detect_monocles {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Linux; Android 7.1.2; SM-T217T Build/N2G47E; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/119.0.6045.134 Safari/537.36")
+      .header("sec-fetch-mode", "document")
+      .header("x-requested-with", "de.monocles.browser")
+      .build();
+    tests.assert_rejected(request)
+}
+test detect_via_browser {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/151.0.0.0 Safari/537.36")
+      .header("sec-fetch-mode", "document")
+      .header("x-requested-with", "mark.via.gp")
+      .build();
+    tests.assert_detected(request, "default")
+}
+test detect_ancient_agent_safari {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 15_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Safari/605.1.15")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_safari_chrome_hybrid {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15 Chrome/131.0.0.0")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_valid_safari_ios {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1")
+      .header("sec-fetch-mode", "navigate")
+      .build();
+    tests.assert_rejected(request)
+}
+test detect_vivaldi_on_macos {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/142 Version/11.1.1 Safari/605.1.15")
+      .header("sec-fetch-mode", "document")
+      .build();
+    tests.assert_detected(request, "default")
+}
+test detect_faked_safari {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.3) Gecko/2008092816 Mobile Safari 1.1.3")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_ios15_safari {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (iPhone; CPU iPhone OS 15_8_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.6.7 Mobile/15E148 Safari/604.1")
+      .build();
+    tests.assert_detected(request, "default")
+}
+test detect_kobo_touch {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Linux; U; Android 2.0; en-us;) AppleWebKit/538.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/538.1 (Kobo Touch 0390/4.44.23552)")
+      .build();
+    tests.assert_detected(request, "default")
+}
+test detect_kindle {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (X11; U; Linux armv7l like Android; en-us) AppleWebKit/531.2+ (KHTML, like Gecko) Version/5.0 Safari/533.2+ Kindle/3.0+")
+      .build();
+    tests.assert_detected(request, "default")
+}
+test detect_ancient_opera_with_secchua {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .header("sec-ch-ua", "\"Microsoft Edge\";v=\"137\", \"Chromium\";v=\"137\", \"Not/A)Brand\";v=\"24\"")
+      .user_agent("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36 OPR/90.0.0.0")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+
+test detect_opera_without_secchua {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 OPR/120.0.0.0")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+
+test detect_opera_with_x_requested_with {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 OPR/120.0.0.0")
+      .header("x-requested-with", "com.opera.mini.native")
+      .build();
+    tests.assert_rejected(request)
+}
+
+test detect_opera_gx_windows {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 OPR/124.0.0.0 (Edition std-2)")
+      .header("sec-ch-ua", "\"Chromium\";v=\"140\", \"Not=A?Brand\";v=\"24\", \"Opera GX\";v=\"124\"")
+      .header("sec-fetch-mode", "document")
+      .header("sec-ch-ua-platform", "\"Windows\"")
+      .build();
+
+    tests.assert_rejected(request)
+}
+
+test detect_opera_gx_android {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Linux; Android 15; SM-S918B Build/AP3A.240905.015.A2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.120 Mobile Safari/537.36 OPX/3.1")
+      .header("sec-ch-ua", "\"Opera GX Android\";v=\"3\", \"Not:A-Brand\";v=\"99\", \"Android WebView\";v=\"145\", \"Chromium\";v=\"145\"")
+      .header("sec-fetch-mode", "document")
+      .header("sec-ch-ua-platform", "\"Android\"")
+      .build();
+
+    tests.assert_rejected(request)
+}
+test detect_ancient_agent_firefox {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (X11; Ubuntu; Linux aarch64; rv:90.0) Gecko/20100101 Firefox/90.0")
+      .header("sec-fetch-mode", "navigate")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_faked_firefox_esr {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5; rv:123.0esr) Gecko/20100101 Firefox/123.0esr")
+      .header("sec-fetch-mode", "navigate")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_faked_firefox_with_no_sec_fetch_mode {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (X11; Linux x86_64; rv:139.0) Gecko/20100101 Firefox/139.0")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_unsubstituted_firefox_rv {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:{version}.0) Gecko/20100101 Firefox/135.0")
+      .header("sec-fetch-mode", "document")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_versionless_faked_firefox {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (X11; U; Gentoo Linux x86_64; pl-PL) Gecko Firefox")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_2008_era_faked_firefox {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; en-US; rv:1.9.2) Gecko/20091218 Firefox 3.6b5")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_single_component_firefox {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Firefox/102")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_invalid_gecko_version {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (X11; Linux x86_64; rv:139.0) Gecko/20140101 Firefox/139.0")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_mobile_firefox {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Android 14; Mobile; rv:140.0) Gecko/140.0 Firefox/140.0")
+      .header("sec-fetch-mode", "navigate")
+      .build();
+    tests.assert_rejected(request)
+}
+test detect_ancient_agent_firefox78 {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:78.0) Gecko/20100101 Firefox/78.0")
+      .build();
+    tests.assert_rejected(request)
+}
+test detect_seamonkey {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0 SeaMonkey/2.53.22")
+      .build();
+    tests.assert_rejected(request)
+}
+test detect_sailfish_os_browser {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (X11; Mobile; rv:91.0) Gecko/91.0 Firefox/91.0")
+      .header("sec-fetch-mode", "navigate")
+      .build();
+    tests.assert_rejected(request)
+}
+test detect_obsolete_browser_engine {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("test-agent/1.2.3 (I'm not Presto, pinky promise)")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_faked_agents_regexp_mozilla6 {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/6.0 Gecko/20121011 Firefox/200.0.0")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+
+test detect_faked_agents_regexp_mozilla45 {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/45.0 (compatible)")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_edge_without_secchua {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_edge_secchua_without_ua {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+      .header("sec-ch-ua", "\" Not A;Brand\";v=\"99\", \"Chromium\";v=\"99\", \"Microsoft Edge\";v=\"99\"")
+      .header("sec-fetch-mode", "navigate")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_edge_on_adroid {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Linux; Android 10; HD1913) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.120 Mobile Safari/537.36 EdgA/146.0.3856.62")
+      .header("sec-ch-ua", "\"Chromium\";v=\"146\", \"Not-A.Brand\";v=\"24\", \"Microsoft Edge\";v=\"146\"")
+      .header("sec-fetch-mode", "navigate")
+      .header("sec-ch-ua-platform", "\"Android\"")
+      .build();
+    tests.assert_rejected(request)
+}
+test detect_ancient_agent_edge {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/37.0.0.0 Safari/537.36 Edg/37.0.0.0")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_faked_edge {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0")
+      .header("sec-ch-ua", "\"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"138\", \"Microsoft Edge\";v=\"138\"")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_duckduckgo_windows_ok {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .header("sec-ch-ua", "\"Chromium\";v=\"138\", \"DuckDuckGo\";v=\"138\", \"Not)A;Brand\";v=\"8\"")
+      .header("sec-ch-ua-platform", "\"Windows\"")
+      .header("sec-fetch-mode", "navigate")
+      .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0")
+      .build();
+    tests.assert_rejected(request)
+}
+
+test detect_duckduckgo_android_ok {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .header("sec-ch-ua", "\"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"138\", \"DuckDuckGo\";v=\"138\"")
+      .header("sec-ch-ua-platform", "\"Android\"")
+      .header("sec-fetch-mode", "navigate")
+      .user_agent("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36")
+      .build();
+    tests.assert_rejected(request)
+}
+
+test detect_duckduckdgo_android_api_ok {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("DuckDuckGo/5 (com.duckduckgo.mobile.android; Android API 34)")
+      .build();
+    tests.assert_rejected(request)
+}
+
+test detect_duckduckdgo_ios_api_ok {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("DuckDuckGo/485 CFNetwork/1498.700.2 Darwin/23.6.0")
+      .build();
+    tests.assert_rejected(request)
+}
+
+test detect_duckduckgo_macosx_ok {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15 Ddg/18.5")
+      .header("sec-fetch-mode", "navigate")
+      .build();
+    tests.assert_rejected(request)
+}
+
+test detect_duckduckgo_macosx_fake {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15 Ddg/18.5")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+
+test detect_duckduckgo_macos_fake_user_agent {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 DuckDuckGo/7 Safari/605.1.15")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_ancient_agent_chrome {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_chrome_without_secchua {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36")
+      .header("sec-fetch-mode", "navigate")
+      .build();
+    tests.assert_detected(request, "default")
+}
+
+test detect_vivaldi_on_ios {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (iPhone; CPU iPhone OS 18_6_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/142.0.7444.180 Mobile/15E148 Safari/604.1")
+      .header("sec-fetch-mode", "document")
+      .build();
+    tests.assert_detected(request, "default")
+}
+
+test detect_edge_on_ios {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) EdgiOS/147 Version/16.0 Safari/605.1.15")
+      .header("sec-fetch-mode", "document")
+      .build();
+    tests.assert_detected(request, "default")
+}
+
+test detect_chrome_download {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36")
+      .header("sec-fetch-mode", "navigate")
+      .header("sec-fetch-dest", "empty")
+      .build();
+    tests.assert_detected(request, "default")
+}
+test detect_dooble {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/5.15.18 Chrome/87.0.4280.144 Safari/537.36 Dooble/2025.07.18")
+      .build();
+    tests.assert_rejected(request)
+}
+test detect_chrome_safari_tusky {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Linux; Android 14; HiBreak Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/139.0.7258.144 Safari/537.36 Tusky/30.0")
+      .build();
+    tests.assert_rejected(request)
+}
+test detect_mull_android {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .header("sec-fetch-dest", "document")
+      .header("sec-fetch-mode", "navigate")
+      .user_agent("Mozilla/5.0 (Linux; Android 14; Z832 Build/MMB29M) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.6478.114/115 Mobile Safari/537.36")
+      .build();
+    tests.assert_rejected(request)
+}
+test detect_wallabag {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.2 (KHTML, like Gecko) Chrome/15.0.874.92 Safari/535.2")
+      .build();
+    tests.assert_rejected(request)
+}
+test detect_falkon {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Falkon/24.01.75 QtWebEngine/5.15.16 Chrome/87.0.4280.144 Safari/537.36")
+      .build();
+    tests.assert_rejected(request)
+}
+test detect_chrome_with_bad_sec_ch_ua {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
+      .header("Sec-CH-UA", "\"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"138\" \"Google Chrome\";v=\"138\"")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_ancient_agent_android_exception {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/28.0 Chrome/130.0.0.0 Mobile Safari/537.36")
+      .build();
+    tests.assert_rejected(request)
+}
+test detect_ancient_agents_pattern {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("test-agent/1.2.3 (Windows 98)")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_secchua_overeager_agent {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.7444.162 Safari/537.36")
+      .header("sec-ch-ua", "\"Not;A Brand\";v=\"99\", \"Google Chrome\";v=\"142\", \"Chromium\";v=\"142\"")
+      .header("sec-ch-ua-platform", "\"Windows\"")
+      .header("sec-fetch-mode", "navigate")
+      .header("sec-ch-ua-arch", "x64")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_secchua_platform_unquoted {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.7444.162 Safari/537.36")
+      .header("sec-ch-ua", "\"Not;A Brand\";v=\"99\", \"Google Chrome\";v=\"142\", \"Chromium\";v=\"142\"")
+      .header("sec-ch-ua-platform", "Windows")
+      .header("sec-fetch-mode", "navigate")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_secchua_platform_mismatch_macOS {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
+      .header("sec-ch-ua", "\"Not_A Brand\";v=\"8\", \"Chromium\";v=\"120\", \"Google Chrome\";v=\"120\"")
+      .header("sec-ch-ua-platform", "\"macOS\"")
+      .header("sec-fetch-mode", "navigate")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_secchua_platform_mismatch_windows {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+      .header("sec-ch-ua", "\" Not A;Brand\";v=\"99\", \"Chromium\";v=\"101\", \"Microsoft Edge\";v=\"101\"")
+      .header("sec-ch-ua-platform", "\"Windows\"")
+      .header("sec-fetch-mode", "navigate")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_secchua_platform_mismatch_linux {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36")
+      .header("sec-ch-ua", "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"118\"")
+      .header("sec-ch-ua-platform", "\"Linux\"")
+      .header("sec-fetch-mode", "navigate")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_secchua_platform_mismatch_ios {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (iPhone; CPU iPhone OS 16_6_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1")
+      .header("sec-ch-ua", "\"Chromium\";v=\"146\", \"Not-A.Brand\";v=\"24\", \"Google Chrome\";v=\"146\"")
+      .header("sec-ch-ua-platform", "\"iOS\"")
+      .header("sec-fetch-mode", "navigate")
+      .build();
+    tests.assert_detected(request, "faked-browser")
+}
+test detect_ladybird {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .header("sec-fetch-mode", "navigate")
+      .user_agent("Mozilla/5.0 (Linux; x86_64) Ladybird/1.0")
+      .build();
+    tests.assert_detected(request, "bad-browser")
+}
+test detect_ai_agents_via_signature_agent {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("DuckDuckBot/1.1; (+http://duckduckgo.com/duckduckbot.html)")
+      .header("signature-agent", "https://bot.duckduckgo.com")
+      .build();
+    tests.assert_detected(request, "ai-agents")
+}
+test detect_fediblock_scraper {
+    let request = tests
+      .make_request("test-host", "/api/v1/instance/domain_blocks")
+      .user_agent("fediblock.manalejandro.com")
+      .build();
+    tests.assert_detected(request, "unwanted-fedi-software")
+}
+test detect_bridgy {
+    let request = tests
+      .make_request("test-host", "/username/statuses/0xacab")
+      .user_agent("Bridgy Fed")
+      .build();
+    tests.assert_detected(request, "unwanted-fedi-software")
+}
+test detect_bad_actor_by_ip {
+    let request = tests
+      .make_request("test-host", "/username/statuses/0xacab")
+      .header("x-forwarded-for", "164.92.220.26")
+      .build();
+    tests.assert_detected(request, "unwanted-fedi-software")
+}
+test detect_s_admin_login {
+    let request = tests
+      .make_request("test-host", "/foo.php")
+      .user_agent("curl/1.2.3.4")
+      .query_param("s", "Admin/login")
+      .build();
+    tests.assert_detected(request, "vulnerability-scanner")
+}
+test detect_bucklog_vuln_scanner {
+    let request = tests
+      .make_request("test-host", "/.envrc")
+      .user_agent("curl/1.2.3.4")
+      .header("x-forwarded-for", "185.177.72.52")
+      .build();
+    tests.assert_detected(request, "vulnerability-scanner")
+}
+test detect_ct_wp_scanner {
+    let request = tests
+      .make_request("test-host", "/wp-json")
+      .user_agent("Mozilla/5.0 (compatible; CT-WP-Scanner/1.0; +https://example.com/bot)")
+      .build();
+    tests.assert_detected(request, "vulnerability-scanner")
+}
+test detect_vuln_scanner_by_ip {
+    let request = tests
+      .make_request("test-host", "/.envrc")
+      .user_agent("")
+      .header("x-forwarded-for", "196.206.65.180")
+      .build();
+    tests.assert_detected(request, "vulnerability-scanner")
+}
+test detect_headless_browsers {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 HeadlessChrome")
+      .build();
+    tests.assert_detected(request, "headless-browser")
+}
+test detect_generated_urls {
+    let request = tests
+      .make_request("test-host", "/test-path/abrakadabra.hello/world")
+      .user_agent("curl/8.13.0")
+      .build();
+    tests.assert_detected(request, "generated-url")
+}
+test detect_x_firefox_ai {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .header("x-firefox-ai", "1")
+      .build();
+    tests.assert_detected(request, "firefox-ai")
+}
+test detect_fake_dooble {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Windows NT 5.1) AppleWebKit/534.34 (KHTML, like Gecko) Dooble/1.40 Safari/534.34")
+      .build();
+    tests.assert_detected(request, "fake-user-agent")
+}
+test detect_demo {
+    let demo_host = tests.config.default().checks.demo_host.host;
+    if demo_host == "" { accept }
+    let request = tests
+      .make_request(demo_host, "/test-path")
+      .user_agent("Mozilla/5.0 (X11; Linux x86_64; rv:139.0) Gecko/20100101 Firefox/139.0")
+      .build();
+    tests.assert_detected(request, "demo")
+}
+test detect_custom_agent_allow {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (X11; Linux x86_64; rv:139.0) Gecko/20100101 Firefox/139.0 iocaine-test-allowed-agent")
+      .build();
+    tests.assert_detected(request, "default")
+}
+test detect_custom_agent_disallow {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("iocaine-test-disallowed-agent")
+      .build();
+    tests.assert_detected(request, "disallowed-user-agent")
+}
+test detect_commercial_scrapers {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (compatible; DotBot/1.2; +https://opensiteexplorer.org/dotbot; help@moz.com)")
+      .build();
+    tests.assert_detected(request, "commercial-scrapers")
+}
+test extinguish_flares_in_the_cloud {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .header("cf-worker", "unions-are-good-actually.workers.dev")
+      .build();
+    tests.assert_detected(request, "cloudflare-worker")
+}
+test browser_pub_is_fine_akshually {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .header("cf-worker", "browser.pub")
+      .build();
+    tests.assert_rejected(request)
+}
+test detect_cgi_bin_trap {
+    let request = tests
+      .make_request("test-host", "/cgi-bin/guestbook.pl")
+      .user_agent("Mozilla/5.0 (X11; Linux x86_64; rv:139.0) Gecko/20100101 Firefox/139.0")
+      .build();
+    tests.assert_detected(request, "cgi-bin-trap")
+}
+test detect_big_tech {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.7151.103 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)")
+      .build();
+    tests.assert_detected(request, "big-tech")
+}
+test detect_archivers {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .header("x-forwarded-for", "128.93.166.1")
+      .build();
+    tests.assert_detect_metadata(request, "archiver", "software-heritage")
+}
+test detect_anti_robots_txt {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("WellKnownBot/1.0")
+      .build();
+    tests.assert_detected(request, "anti-robots.txt")
+}
+test detect_ai_robots_txt {
+    if not tests.config.default().checks.ai_robots_txt.enable { accept }
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("ClaudeBot")
+      .build();
+    tests.assert_detected(request, "ai.robots.txt")
+}
+test classification_good_bots_fedi_software_by_agent {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("gotosocial/0.19.1+git-6574dc8 (+http://test-host)")
+      .build();
+    tests.assert_classification(request, "fediverse-software")
+}
+
+test classification_good_bots_fedi_software_by_referrer {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("curl/8.13.0")
+      .header("referer", "https://phanpy.social")
+      .build();
+    tests.assert_classification(request, "fediverse-software")
+}
+
+test classification_good_bots_fedi_software_by_accept {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Crystal")
+      .header("accept", "application/activity+json, application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
+      .build();
+    tests.assert_classification(request, "fediverse-software")
+}
+test classification_good_bots_comm_software_by_agent {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Synapse/1.131.0")
+      .build();
+    tests.assert_classification(request, "communication-software")
+}
+
+test classification_good_bots_fedi_software_by_path {
+    let request = tests
+      .make_request("test-host", "/_matrix/federation/v1/user/devices/%40iocaine%3Aexample.com")
+      .user_agent("curl/8.13.0")
+      .build();
+    tests.assert_classification(request, "communication-software")
+}
+
+test classification_good_bots_tools_and_services {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("curl/8.13.0 Lix/2.93.0")
+      .build();
+    tests.assert_classification(request, "tools-and-services")
+}
+
+test classification_good_bots_feed_readers {
+    let request = tests
+      .make_request("test-host", "/test-path")
+      .user_agent("Mozilla/5.0 (compatible; Miniflux/2.2.8; +https://miniflux.app)")
+      .build();
+    tests.assert_classification(request, "feed-readers")
+}

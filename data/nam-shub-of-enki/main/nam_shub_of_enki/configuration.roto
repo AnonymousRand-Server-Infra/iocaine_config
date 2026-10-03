@@ -1,0 +1,216 @@
+## SPDX-FileCopyrightText: 2025 Gergely Nagy
+## SPDX-FileContributor: Gergely Nagy
+##
+## SPDX-License-Identifier: MIT
+
+type Config {
+    templates: {
+        minify: bool,
+        fake_jpeg: {
+            enable: bool,
+            path: String,
+        },
+    },
+    sources: {
+        wordlists: StringList,
+        training_corpus: StringList
+    },
+    logging: {
+        enable: bool,
+        classification: {
+            enable: bool,
+            fediverse_software: {
+                mastodon_frontend_hosts: StringList,
+            },
+        },
+    },
+    firewall: {
+        block_rule_hits: StringList,
+    },
+
+    ordering: StringList,
+
+    checks: {
+        ai_agents: {
+            enable: bool,
+        },
+        unwanted_fedi_software: {
+            enable: bool,
+        },
+        vulnerability_scanner: {
+            enable: bool,
+        },
+        headless_browsers: {
+            enable: bool,
+        },
+        generated_urls: {
+            enable: bool,
+            identifiers: StringList,
+        },
+        forbidden_referrers: {
+            enable: bool,
+            referrers: StringList,
+        },
+        firefox_ai: {
+            enable: bool,
+        },
+        fake_agents: {
+            enable: bool,
+        },
+        demo_host: {
+            enable: bool,
+            host: String,
+        },
+        custom_agents: {
+            allow: StringList,
+            disallow: StringList,
+        },
+        cookie_monster: {
+            enable: bool,
+            fediverse_hosts: StringList,
+            forgejo_hosts: StringList,
+            forgejo_challenge: String,
+            cookie_name: String,
+        },
+        commercial_scrapers: {
+            enable: bool,
+        },
+        cloudflare_workers: {
+            enable: bool,
+        },
+        cgi_bin_trap: {
+            enable: bool,
+        },
+        browser_verification: {
+            enable: bool,
+        },
+        big_tech: {
+            enable: bool,
+        },
+        asn: {
+            enable: bool,
+            filter_aggressives: bool,
+            database_path: String,
+            asns: StringList,
+            request_logging: bool,
+        },
+        archivers: {
+            enable: bool,
+        },
+        anti_robots_txt: {
+            enable: bool,
+        },
+        ai_robots_txt: {
+            enable: bool,
+            path: String,
+        },
+    }
+}
+fn from_globals() -> Config? {
+    let config = Config {
+        ordering: CONFIG_ORDERING.split_by(","),
+        sources: {
+            wordlists: CONFIG_SOURCES_WORDLISTS.split_by(","),
+            training_corpus: CONFIG_SOURCES_TRAINING_CORPUS.split_by(",")
+        },
+        templates: {
+            minify: CONFIG_TEMPLATES_MINIFY,
+            fake_jpeg: {
+                enable: CONFIG_TEMPLATES_FAKE_JPEG_ENABLE,
+                path: CONFIG_TEMPLATES_FAKE_JPEG_PATH,
+            },
+        },
+        logging: {
+            enable: CONFIG_LOGGING_ENABLE,
+            classification: {
+                enable: CONFIG_LOGGING_CLASSIFICATION_ENABLE,
+                fediverse_software: {
+                    mastodon_frontend_hosts:
+                      CONFIG_LOGGING_CLASSIFICATION_FEDIVERSE_SOFTWARE_MASTODON_FRONTEND_HOSTS
+
+                        .split_by(","),
+                },
+            },
+        },
+        firewall: {
+            block_rule_hits: CONFIG_FIREWALL_BLOCK_RULE_HITS.split_by(","),
+        },
+        checks: {
+            asn: {
+                enable: CONFIG_CHECKS_ASN_ENABLE,
+                filter_aggressives: CONFIG_CHECKS_ASN_FILTER_AGGRESSIVES,
+                database_path: CONFIG_CHECKS_ASN_DATABASE_PATH,
+                asns: CONFIG_CHECKS_ASN_ASNS.split_by(","),
+                request_logging: CONFIG_CHECKS_ASN_REQUEST_LOGGING,
+            },
+            ai_agents: {
+                enable: CONFIG_CHECKS_AI_AGENTS_ENABLE,
+            },
+            ai_robots_txt: {
+                enable: CONFIG_CHECKS_AI_ROBOTS_TXT_ENABLE,
+                path: CONFIG_CHECKS_AI_ROBOTS_TXT_PATH,
+            },
+            cookie_monster: {
+                enable: CONFIG_CHECKS_COOKIE_MONSTER_ENABLE,
+                forgejo_hosts: CONFIG_CHECKS_COOKIE_MONSTER_FORGEJO_HOSTS.split_by(","),
+                fediverse_hosts: CONFIG_CHECKS_COOKIE_MONSTER_FEDIVERSE_HOSTS.split_by(","),
+                cookie_name: CONFIG_CHECKS_COOKIE_MONSTER_COOKIE_NAME,
+                forgejo_challenge: CONFIG_CHECKS_COOKIE_MONSTER_FORGEJO_CHALLENGE,
+            },
+            custom_agents: {
+                allow: CONFIG_CHECKS_CUSTOM_AGENTS_ALLOW.split_by(","),
+                disallow: CONFIG_CHECKS_CUSTOM_AGENTS_DISALLOW.split_by(","),
+            },
+            generated_urls: {
+                enable: CONFIG_CHECKS_GENERATED_URLS_ENABLE,
+                identifiers: CONFIG_CHECKS_GENERATED_URLS_IDENTIFIERS.split_by(","),
+            },
+            unwanted_fedi_software: {
+                enable: CONFIG_CHECKS_UNWANTED_FEDI_SOFTWARE_ENABLE,
+            },
+            forbidden_referrers: {
+                enable: CONFIG_CHECKS_FORBIDDEN_REFERRERS_ENABLE,
+                referrers: CONFIG_CHECKS_FORBIDDEN_REFERRERS_REFERRERS.split_by(","),
+            },
+            cloudflare_workers: {
+                enable: CONFIG_CHECKS_CLOUDFLARE_WORKERS_ENABLE,
+            },
+            fake_agents: {
+                enable: CONFIG_CHECKS_FAKE_AGENTS_ENABLE,
+            },
+            vulnerability_scanner: {
+                enable: CONFIG_CHECKS_VULNERABILITY_SCANNER_ENABLE,
+            },
+            firefox_ai: {
+                enable: CONFIG_CHECKS_FIREFOX_AI_ENABLE,
+            },
+            cgi_bin_trap: {
+                enable: CONFIG_CHECKS_CGI_BIN_TRAP_ENABLE,
+            },
+            headless_browsers: {
+                enable: CONFIG_CHECKS_HEADLESS_BROWSERS_ENABLE,
+            },
+            browser_verification: {
+                enable: CONFIG_CHECKS_BROWSER_VERIFICATION_ENABLE,
+            },
+            demo_host: {
+                enable: CONFIG_CHECKS_DEMO_HOST_ENABLE,
+                host: CONFIG_CHECKS_DEMO_HOST_HOST,
+            },
+            anti_robots_txt: {
+                enable: CONFIG_CHECKS_ANTI_ROBOTS_TXT_ENABLE,
+            },
+            archivers: {
+                enable: CONFIG_CHECKS_ARCHIVERS_ENABLE,
+            },
+            commercial_scrapers: {
+                enable: CONFIG_CHECKS_COMMERCIAL_SCRAPERS_ENABLE
+            },
+            big_tech: {
+                enable: CONFIG_CHECKS_BIG_TECH_ENABLE,
+            },
+        },
+    };
+
+    Some(config)
+}

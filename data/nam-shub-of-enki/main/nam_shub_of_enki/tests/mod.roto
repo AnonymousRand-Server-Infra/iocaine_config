@@ -1,0 +1,55 @@
+## SPDX-FileCopyrightText: 2025 Gergely Nagy
+## SPDX-FileContributor: Gergely Nagy
+##
+## SPDX-License-Identifier: MIT
+
+fn make_request(host: String, path: String) -> RequestBuilder {
+    return RequestBuilder.new("GET", path).header("host", host)
+}
+fn assert_detect_metadata(request: Request, key: String, expected: String) -> Verdict[(), ()] {
+    let metadata = HashMap.new();
+    let outcome = super.detect.detect(config.default(), request, metadata);
+
+    match metadata.get(key) {
+        Some(value) -> {
+            match value.as_str() {
+                Some(s) -> {
+                    if expected == s { accept }
+                },
+                _ -> {},
+            }
+        },
+        _ -> {},
+    }
+
+    reject
+}
+fn assert_detected(request: Request, expected: String) -> Verdict[(), ()] {
+    assert_detect_metadata(request, "ruleset", expected)
+}
+fn assert_rejected(request: Request) -> Verdict[(), ()] {
+    let response = super.detect.detect(config.default(), request, HashMap.new());
+
+    match response {
+        Some(v) -> {
+            if v == "not-for-us" {
+                accept
+            }
+        },
+        _ -> {},
+    }
+
+    reject
+}
+fn assert_classification(request: Request, expected: String) -> Verdict[(), ()] {
+    let classification = super.classify.classify(config.default(), request, HashMap.new());
+
+    match classification {
+        Some(v) -> {
+            if v == expected { accept }
+        },
+        _ -> {},
+    }
+
+    reject
+}

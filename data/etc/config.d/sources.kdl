@@ -1,6 +1,0 @@
-declare-handler default {
-  sources {
-    training-corpus "/data/corpus/das_kapital_i.txt"
-    wordlists "/data/corpus/words.txt"
-  }
-}

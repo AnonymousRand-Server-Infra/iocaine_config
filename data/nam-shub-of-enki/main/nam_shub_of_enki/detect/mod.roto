@@ -1,0 +1,493 @@
+## SPDX-FileCopyrightText: 2025 Gergely Nagy
+## SPDX-FileContributor: Gergely Nagy
+##
+## SPDX-License-Identifier: MIT
+
+import super.verdicts;
+import super.configuration.Config;
+import bad_browser;
+
+type Context {
+    config: Config,
+    request: Request,
+    metadata: HashMap,
+    user_agent: String,
+    secchua: SecCHUA,
+    sec_fetch_mode: String,
+    host: String,
+    path: String,
+}
+
+fn __cookie_monster_forgejo(context: Context) -> String {
+    if context.path.starts_with("/api/")
+      || context.path.starts_with("/v2/")
+      || context.path.starts_with("/.well-known/")
+      || context.path == "/metrics"
+      || context.path == "/robots.txt"
+      || context.path.ends_with(".rss")
+      || context.path.ends_with(".atom")
+      || context.path.ends_with(".tar.gz")
+      || context.path.ends_with(".yaml/badge.svg")
+    {
+        return ""
+    }
+    if NSOE_PATTERNS_COOKIE_MONSTER_FORGEJO_ALLOWED_AGENTS.matches(context.user_agent) {
+        return ""
+    }
+
+    return context.config.checks.cookie_monster.forgejo_challenge
+}
+fn __cookie_monster_fediverse(context: Context) -> String {
+    if not context.path.starts_with("/@")
+      || context.request.header("origin").starts_with("moz-extension://")
+      || context.request.header("referer").starts_with("https://" + context.host + "/users/")   {
+        return ""
+    }
+
+    return "manual"
+}
+fn __is_faked_safari(context: Context) -> bool {
+    if NSOE_REGEXES_BROWSERS_FAKE_SAFARI.matches(context.user_agent) {
+        return true;
+    }
+    
+    if not (NSOE_REGEXES_BROWSERS_SAFARI.matches(context.user_agent)) {
+        return false;
+    }
+    if context.user_agent.contains("CriOS/")
+      || context.user_agent.contains("EdgiOS/") {
+        return false;
+    }
+    if context.request.header("x-requested-with") == "de.monocles.browser" {
+        return false;
+    }
+    if context.request.header("x-requested-with") == "mark.via.gp" {
+        return false;
+    }
+    return (context.sec_fetch_mode == "")
+      || NSOE_REGEX_SETS_BROWSER_VERIFICATION_SAFARI.matches(context.user_agent);
+}
+fn __is_faked_firefox(context: Context) -> bool {
+    if NSOE_REGEX_SETS_BROWSERS_FAKE_FIREFOX.matches(context.user_agent) {
+        return true;
+    }
+    let version_matcher = NSOE_REGEXES_BROWSER_VERIFICATION_GECKO_VERSION;
+    if version_matcher.matches(context.user_agent) {
+        let matcher = version_matcher.as_regex_matcher();
+        let gecko_version = match matcher {
+            Some(v) -> v.capture(context.user_agent, "GeckoVersion"),
+            _ -> "",
+        };
+    
+        if (gecko_version != "20100101") && (not gecko_version.contains(".")) {
+            return true;
+        }
+    }
+    let ua = context.user_agent.to_lowercase();
+    if not (ua.contains("firefox/") || ua.contains("fxios/")) {
+        return false;
+    }
+    return (context.sec_fetch_mode == "" && context.request.header("sec-gpc") == "")
+      || NSOE_REGEX_SETS_BROWSER_VERIFICATION_FIREFOX.matches(context.user_agent);
+}
+fn __is_obsolete_engine(user_agent: String) -> bool {
+    return NSOE_PATTERNS_BROWSER_VERIFICATION_OBSOLETE_ENGINES.matches(user_agent)
+}
+fn __is_faked_engine(context: Context) -> bool {
+    return __is_obsolete_engine(context.user_agent)
+      || __is_fake_engine(context.user_agent);
+}
+fn __is_fake_engine(user_agent: String) -> bool {
+    if NSOE_REGEX_SET_BROWSER_VERIFICATION_FAKE_ENGINES.matches(user_agent) {
+        return true;
+    }
+    return false
+}
+fn __is_faked_edge(context: Context) -> bool {
+    if context.secchua.contains_item("Microsoft Edge")
+      && not (context.user_agent.contains("Edg/") || context.user_agent.contains("EdgA/")) {
+        return true;
+    }
+    
+    if not (context.user_agent.contains("Edg/")
+            || context.user_agent.contains("EdgA/")) {
+        return false;
+    }
+    if context.secchua.contains_item("DuckDuckGo") {
+        return false;
+    }
+    if not context.secchua.contains_item("Microsoft Edge") {
+        return true;
+    }
+    return (context.sec_fetch_mode == "")
+      || NSOE_REGEX_SETS_BROWSER_VERIFICATION_EDGE.matches(context.user_agent)
+}
+fn __is_faked_ddg(context: Context) -> bool {
+    if not (context.user_agent.contains("Ddg/")
+            || context.user_agent.contains("DuckDuckGo/")
+            || context.secchua.contains_item("DuckDuckGo")) {
+        return false;
+    }
+    if context.user_agent.contains("Ddg/")
+      && context.user_agent.contains("Mac OS X") {
+        return false
+    }
+    if context.user_agent.starts_with("DuckDuckGo/") {
+        return false;
+    }
+    if context.secchua.contains_item("DuckDuckGo")
+      && (context.request.header("sec-ch-ua-platform") == "\"Windows\"" ||
+          context.request.header("sec-ch-ua-platform") == "\"Android\"") {
+        return false;
+    }
+    return true;
+}
+fn __is_faked_chrome(context: Context) -> bool {
+    let ua = context.user_agent.to_lowercase();
+    if not (ua.contains("chrome/") || ua.contains("crios/") || ua.contains("edgios/")) {
+        return false
+    }
+    return (context.sec_fetch_mode == "")
+      || NSOE_REGEX_SETS_BROWSER_VERIFICATION_CHROME.matches(context.user_agent);
+}
+fn __is_faked_platform(context: Context) -> bool {
+    let platform = context.request.header("sec-ch-ua-platform");
+    
+    if context.request.header("sec-ch-ua-arch") != "" {
+        return true;
+    }
+    
+    if context.request.header("sec-ch-ua") != "" && context.secchua.is_valid() {
+        if not platform.contains("\"") || platform == "\"\"" {
+            return true;
+        }
+        if platform == "\"macOS\"" {
+            if not (context.user_agent.contains("Macintosh") ||
+                    context.user_agent.contains("iPhone")) {
+                return true;
+            }
+        }
+        if platform == "\"Linux\"" {
+            if not (context.user_agent.contains("Linux") ||
+                    context.user_agent.contains("CrOS")) {
+                return true;
+            }
+        }
+        if platform == "\"Windows\"" {
+            if not context.user_agent.contains("Windows") {
+                return true;
+            }
+        }
+        if platform == "\"iOS\"" {
+            if context.user_agent.contains("iPhone OS 16_") {
+                return true;
+            }
+        }
+    }
+    return NSOE_PATTERNS_BROWSER_VERIFICATION_FAKED_PLATFORMS.matches(context.user_agent);
+}
+fn __is_vulnerability_scanner(context: Context) -> bool {
+  if context.path.ends_with(".php")
+    && context.request.query("s") == "Admin/login" {
+      return true
+  }
+  if context.request.header("x-forwarded-for") == "185.177.72.52" {
+      return true
+  }
+  if context.user_agent.contains("CT-WP-Scanner") {
+      return true
+  }
+  if NSOE_PATTERNS_VULNERABILITY_SCANNER_IPS.matches(context.request.header("x-forwarded-for")) {
+      return true
+  }
+  return false
+}
+fn __is_faked_agent(context: Context) -> bool {
+  
+  return NSOE_PATTERNS_FAKE_USER_AGENTS.matches(context.user_agent)
+}
+fn __cookie_monster(context: Context) -> String {
+    if context.request.cookie(context.config.checks.cookie_monster.cookie_name) == "passed" {
+        return ""
+    }
+    if not context.config.checks.cookie_monster.fediverse_hosts.is_empty()
+      && context.config.checks.cookie_monster.fediverse_hosts.contains(context.host) {
+        return __cookie_monster_fediverse(context)
+    }
+    if not context.config.checks.cookie_monster.forgejo_hosts.is_empty()
+      && context.config.checks.cookie_monster.forgejo_hosts.contains(context.host) {
+        return __cookie_monster_forgejo(context)
+    }
+    return ""
+}
+fn __is_faked_browser(context: Context) -> bool {
+    if NSOE_REGEX_SETS_BROWSER_VERIFICATION_EXCEPTIONS.matches(context.user_agent) {
+        return false
+    }
+
+    if context.request.header("x-requested-with").starts_with("com.opera.") {
+        return false;
+    }
+
+    return __is_faked_platform(context)
+      || __is_faked_engine(context)
+      || __is_faked_firefox(context)
+      || __is_faked_safari(context)
+      || __is_faked_ddg(context)
+      || __is_faked_edge(context)
+      || __is_faked_chrome(context);
+}
+fn __is_archiver(context: Context) -> bool {
+    let forwarded_for = context.request.header("x-forwarded-for");
+
+    if forwarded_for == "" {
+        return false
+    }
+
+    if NSOE_PREFIXES_INTERNET_ARCHIVE.matches(forwarded_for) {
+        context.metadata.insert_str("archiver", "internet-archive");
+        return true
+    }
+
+    if NSOE_PREFIXES_SOFTWARE_HERITAGE.matches(forwarded_for) {
+        context.metadata.insert_str("archiver", "software-heritage");
+        return true
+    }
+
+    return false
+}
+
+fn detect(
+    config: Config,
+    request: Request,
+    metadata: HashMap
+) -> String? {
+    let context = Context {
+        config: config,
+        request: request,
+        metadata: metadata,
+        user_agent: request.header("user-agent"),
+        secchua: request.header("sec-ch-ua").as_secchua(),
+        sec_fetch_mode: request.header("sec-fetch-mode"),
+        host: request.header("host"),
+        path: request.path(),
+    };
+
+    METRIC_REQUESTS.inc_for1(context.host);
+    if config.logging.enable
+      && request.query("debug") == "nam-shub-of-enki" {
+        let req = HashMap.new();
+        let headers = HashMap.new();
+        request.headers_into_map(headers);
+        let queries = HashMap.new();
+        request.queries_into_map(queries);
+    
+        req.insert_map("header", headers);
+        req.insert_map("query", queries);
+        req.insert_str("method", request.method());
+        req.insert_str("path", context.path);
+    
+        metadata.insert_map("request", req);
+        metadata.insert_str("debug", "true");
+    }
+
+    let i = 0;
+    while i < config.ordering.len() {
+        let ruleset = config.ordering.nth(i)?;
+
+        if ruleset == "demo" {
+            if config.checks.demo_host.enable
+               && context.host == config.checks.demo_host.host {
+                return verdicts.garbage(context, "demo")
+            }
+        }
+        if ruleset == "cgi-bin-trap" {
+            if config.checks.cgi_bin_trap.enable
+              && context.path.starts_with("/cgi-bin") {
+                return verdicts.garbage(context, "cgi-bin-trap")
+            }
+        }
+        if ruleset == "asn" {
+            if config.checks.asn.enable
+              && (NSOE_GEOIP_ASN.matches(context.request.header("x-forwarded-for"))
+                  || NSOE_GEOIP_ASN_AGGRESSIVES.matches(context.request.header("x-forwarded-for"))) {
+                if config.checks.asn.request_logging {
+                    let req = HashMap.new();
+                    let headers = HashMap.new();
+                    request.headers_into_map(headers);
+                    let queries = HashMap.new();
+                    request.queries_into_map(queries);
+            
+                    req.insert_map("header", headers);
+                    req.insert_map("query", queries);
+                    req.insert_str("method", request.method());
+                    req.insert_str("path", context.path);
+            
+                    metadata.insert_map("request", req);
+                }
+            
+                let asn = NSOE_GEOIP_ASN
+                  .as_asn_matcher()?
+                  .lookup(context.request.header("x-forwarded-for"));
+                metadata.insert_str("asn", asn.to_string());
+            
+                return verdicts.garbage(context, "asn")
+            }
+        }
+        if ruleset == "ai-agents" {
+            if config.checks.ai_agents.enable
+              && context.request.header("signature-agent") != "" {
+                return verdicts.garbage(context, "ai-agents")
+            }
+        }
+        if ruleset == "custom-agents" {
+            if NSOE_PATTERNS_CUSTOM_AGENTS_ALLOW.matches(context.user_agent) {
+                return verdicts.not_for_us(context, "default");
+            }
+            
+            if NSOE_PATTERNS_CUSTOM_AGENTS_DISALLOW.matches(context.user_agent) {
+                return verdicts.garbage(context, "disallowed-user-agent");
+            }
+        }
+        if ruleset == "firefox-ai" {
+            if config.checks.firefox_ai.enable
+              && request.header("x-firefox-ai") == "1" {
+                return verdicts.garbage(context, "firefox-ai")
+            }
+        }
+        if ruleset == "cloudflare-workers" {
+            if config.checks.cloudflare_workers.enable
+              && request.header("cf-worker") != ""
+              && request.header("cf-worker") != "browser.pub" {
+                return verdicts.garbage(context, "cloudflare-worker")
+            }
+        }
+        if ruleset == "archiver" {
+            if config.checks.archivers.enable && __is_archiver(context) {
+                return verdicts.garbage(context, "archiver")
+            }
+        }
+        if ruleset == "headless-browser" {
+            if config.checks.headless_browsers.enable
+              && NSOE_PATTERNS_HEADLESS_BROWSERS.matches(context.user_agent) {
+                return verdicts.garbage(context, "headless-browser")
+            }
+        }
+        if ruleset == "ai.robots.txt" {
+            if config.checks.ai_robots_txt.enable
+              && NSOE_PATTERN_AI_ROBOTS_TXT.matches(context.user_agent) {
+                return verdicts.garbage(context, "ai.robots.txt")
+            }
+        }
+        if ruleset == "vulnerability-scanner" {
+            if config.checks.vulnerability_scanner.enable
+              && __is_vulnerability_scanner(context) {
+                return verdicts.garbage(context, "vulnerability-scanner")
+            }
+        }
+        if ruleset == "fake-user-agent" {
+            if config.checks.fake_agents.enable
+              && __is_faked_agent(context) {
+                return verdicts.garbage(context, "fake-user-agent")
+            }
+        }
+        if ruleset == "big-tech" {
+            if config.checks.big_tech.enable
+              && NSOE_PATTERNS_BIG_TECH.matches(context.user_agent) {
+                return verdicts.garbage(context, "big-tech")
+            }
+        }
+        if ruleset == "anti-robots.txt" {
+            if config.checks.anti_robots_txt.enable
+              && NSOE_PATTERNS_ANTI_ROBOTS_TXT.matches(context.user_agent) {
+                return verdicts.garbage(context, "anti-robots.txt")
+            }
+        }
+        if ruleset == "commercial-scrapers" {
+            if config.checks.commercial_scrapers.enable
+              && NSOE_PATTERNS_COMMERCIAL_SCRAPERS.matches(context.user_agent) {
+                return verdicts.garbage(context, "commercial-scrapers")
+            }
+        }
+        if ruleset == "unwanted-fedi-actors" {
+            if config.checks.unwanted_fedi_software.enable
+              && (NSOE_PATTERNS_UNWANTED_FEDI_SOFTWARE.matches(context.user_agent)
+                  || NSOE_NETWORKS_UNWANTED_FEDI_ACTORS.matches(request.header("x-forwarded-for"))) {
+                return verdicts.garbage(context, "unwanted-fedi-software")
+            }
+        }
+        if ruleset == "bad-browser" {
+            if bad_browser.__is_bad_browser(context) {
+                return verdicts.garbage(context, "bad-browser")
+            }
+        }
+        if ruleset == "browser-verification" {
+            if config.checks.browser_verification.enable
+              && request.header("sec-ch-ua") != ""
+              && not context.secchua.is_valid() {
+                if config.logging.enable {
+                    let req = HashMap.new();
+                    let headers = HashMap.new();
+                    request.headers_into_map(headers);
+                    let queries = HashMap.new();
+                    request.queries_into_map(queries);
+            
+                    req.insert_map("header", headers);
+                    req.insert_map("query", queries);
+                    req.insert_str("method", request.method());
+                    req.insert_str("path", context.path);
+            
+                    metadata.insert_map("request", req);
+                    metadata.insert_str("sec-ch-ua-debug", "true");
+                }
+            
+                return verdicts.garbage(context, "faked-browser")
+            }
+            if config.checks.browser_verification.enable && __is_faked_browser(context) {
+                return verdicts.garbage(context, "faked-browser")
+            }
+        }
+        if ruleset == "generated-url" {
+            if config.checks.generated_urls.enable
+              && (NSOE_PATTERNS_GENERATED_URLS.matches(context.path)
+            	  || NSOE_PATTERNS_GENERATED_URLS.matches(context.request.header("referer"))) {
+                return verdicts.garbage(context, "generated-url")
+            }
+        }
+        if ruleset == "forbidden-referrers" {
+            if config.checks.forbidden_referrers.enable {
+                let referrer = request.header("referer");
+                if referrer != "" && NSOE_PATTERNS_FORBIDDEN_REFERRERS.matches(request.header("referer")) {
+                    return verdicts.garbage(context, "forbidden-referrers")
+                }
+            }
+        }
+        if ruleset == "cookie-monster" {
+            if config.checks.cookie_monster.enable {
+                let challenge = __cookie_monster(context);
+                if challenge != "" {
+                    return verdicts.challenge(context, "cookie-monster", challenge);
+                }
+            }
+        }
+
+        i = i + 1
+    }
+
+    if config.logging.enable {
+        let req = HashMap.new();
+        let headers = HashMap.new();
+        request.headers_into_map(headers);
+        let queries = HashMap.new();
+        request.queries_into_map(queries);
+    
+        req.insert_map("header", headers);
+        req.insert_map("query", queries);
+        req.insert_str("method", request.method());
+        req.insert_str("path", context.path);
+    
+        metadata.insert_map("request", req);
+    }
+    
+    return verdicts.not_for_us(context, "default")
+}

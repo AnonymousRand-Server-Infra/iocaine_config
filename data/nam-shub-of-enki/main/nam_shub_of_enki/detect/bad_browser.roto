@@ -1,0 +1,18 @@
+## SPDX-FileCopyrightText: 2025 Gergely Nagy
+## SPDX-FileContributor: Gergely Nagy
+##
+## SPDX-License-Identifier: MIT
+
+import super.Context;
+
+fn __is_ladybird(context: Context) -> bool {
+    return context.user_agent.contains("Ladybird/");
+}
+fn __is_brave(context: Context) -> bool {
+    return context.secchua.contains_item("Brave") || context.user_agent.contains("Brave/");
+}
+
+fn __is_bad_browser(context: Context) -> bool {
+    return __is_brave(context)
+      || __is_ladybird(context);
+}

@@ -1,0 +1,34 @@
+## SPDX-FileCopyrightText: 2025 Gergely Nagy
+## SPDX-FileContributor: Gergely Nagy
+##
+## SPDX-License-Identifier: MIT
+
+import super.detect.Context;
+
+fn garbage(context: Context, ruleset: String) -> String? {
+    context.metadata.insert_str("ruleset", ruleset);
+    context.metadata.insert_str("verdict.outcome", "garbage");
+    context.metadata.insert_str("verdict.type", "accept");
+
+    METRIC_RULESET_HITS.inc_for2(ruleset, "garbage");
+
+    return Some("garbage")
+}
+fn challenge(context: Context, ruleset: String, challenge: String) -> String? {
+    context.metadata.insert_str("ruleset", ruleset);
+    context.metadata.insert_str("verdict.outcome", "challenge");
+    context.metadata.insert_str("verdict.type", "accept");
+
+    METRIC_RULESET_HITS.inc_for2(ruleset, "challenge");
+
+    return Some(f"challenge:{challenge}")
+}
+fn not_for_us(context: Context, ruleset: String) -> String? {
+    context.metadata.insert_str("ruleset", ruleset);
+    context.metadata.insert_str("verdict.outcome", "not-for-us");
+    context.metadata.insert_str("verdict.type", "reject");
+
+    METRIC_RULESET_HITS.inc_for2(ruleset, "not-for-us");
+
+    return Some("not-for-us")
+}

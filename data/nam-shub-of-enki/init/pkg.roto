@@ -1,0 +1,15 @@
+## SPDX-FileCopyrightText: 2025 Gergely Nagy
+## SPDX-FileContributor: Gergely Nagy
+##
+## SPDX-License-Identifier: MIT
+
+import nam_shub_of_enki;
+
+fn init(metrics: Metrics) -> ()? {
+    let config = if config.has("inherits") {
+        nam_shub_of_enki.configuration.from_iocaine()?
+    } else {
+        nam_shub_of_enki.configuration.default()
+    };
+    return nam_shub_of_enki.init(config, metrics.registry(), metrics.loaded());
+}

@@ -1,0 +1,806 @@
+## SPDX-FileCopyrightText: 2025 Gergely Nagy
+## SPDX-FileContributor: Gergely Nagy
+##
+## SPDX-License-Identifier: MIT
+
+import configuration.Config;
+
+fn __cookie_monster_init() -> ()? {
+    let list = StringList.new();
+    list.push("git/");
+    list.push("Go-http-client/");
+    list.push("link_checker/");
+    list.push("docker/");
+    list.push("@actions/artifact-");
+    list.push("melpa.org");
+    list.push("got (https://github.com/sindresorhus/got)");
+    list.push("GoModuleMirror/1.0 (+https://proxy.golang.org)");
+    list.push("curl/");
+	list.push("Wget/");
+
+    globals.add(
+        "NSOE_PATTERNS_COOKIE_MONSTER_FORGEJO_ALLOWED_AGENTS",
+        Matcher.from_patterns(list)?
+    );
+
+    Some(())
+}
+fn __browser_verification_safari_regexes() -> StringList {
+    let list = StringList.new();
+
+    list.push("(?i:Version)/(\\d|1[0-5])\\.");
+    list.push("Chrome/");
+
+    return list
+}
+fn __browser_verification_firefox_regexes() -> StringList {
+    let list = StringList.new();
+
+    list.push("(?i:Firefox|FxiOS)/\\d{1,2}\\.");
+    list.push("(?i:Firefox|FxiOS)/(\\d{1,2}\\.?)+esr");
+
+    return list
+}
+fn __browser_verification_fake_firefox_regexes() -> StringList {
+    let list = StringList.new();
+
+    list.push("Firefox$");
+    list.push("(?i:Firefox)/\\d+$");
+    list.push("(?i:Firefox) ?\\d{1,2}\\.");
+    list.push("^(?i:Firefox)/([^ ]+)$");
+    list.push("rv:\\{version\\}.*Firefox/");
+
+    return list
+}
+fn __browser_verification_patterns_obsolete_engines() -> StringList {
+    let list = StringList.new();
+
+    list
+      .push("Mozilla/4.")
+      .push("MSIE")
+      .push("Trident")
+      .push("Presto");
+
+    return list
+}
+fn __browser_verification_regexes_fake_engines() -> StringList {
+    let list = StringList.new();
+
+    list.push("(?i:Mozilla)/[0-46-9]\\d*\\.");
+    list.push("Gecko/.*Safari");
+    list.push("^Mozilla/.*Mozilla/");
+
+    return list
+}
+fn __browser_verification_edge_regexes() -> StringList {
+    let list = StringList.new();
+
+    list.push("(?i:Edg|EdgiOS)/\\d{1,2}\\.");
+
+    return list
+}
+fn __browser_verification_chrome_regexes() -> StringList {
+    let list = StringList.new();
+
+    list.push("(?i:Chrome|CriOS)/\\d{1,2}\\.");
+
+    return list
+}
+fn __browser_verification_patterns_faked_platforms() -> StringList {
+    let list = StringList.new();
+
+    list
+      .push("Windows CE")
+      .push("Windows 95")
+      .push("Windows 98")
+      .push("Windows 9x")
+      .push("Win95")
+      .push("Win98")
+      .push("Windows 3")
+      .push("WinNT4.0")
+      .push("PPC Mac OS")
+      .push("OS/2");
+
+    return list
+}
+fn __faked_agents_patterns() -> StringList {
+    let list = StringList.new();
+
+    list.push("ct‑git‑scanner/");
+    list.push("AvastSecureBrowser");
+    list.push("Config/");
+    list.push("Dooble/1.40");
+
+    return list
+}
+fn __commercial_scraper_patterns() -> StringList {
+    let list = StringList.new();
+
+    list.push("AwarioSmartbot");
+    list.push("AwarioRssBot");
+    
+    list.push("SemrushBot");
+    list.push("SiteAuditBot");
+    list.push("SplitSignalBot");
+    
+    list.push("magpie-crawler");
+    list.push("peer39_crawler");
+    list.push("AhrefsBot");
+    list.push("TermlyBot");
+    list.push("Dotbot");
+    list.push("Bravebot");
+    list.push("trendictionbot");
+    list.push("mj12bot");
+    list.push("l9scan");
+    list.push("CensysInspect");
+    list.push("InternetMeasurement");
+    list.push("ws-bot-v1");
+    list.push("eter9");
+    list.push("VelenPublicWebCrawler");
+    list.push("Yandex");
+    list.push("Buck/");
+    list.push("FediralBot");
+    list.push("Aliyum");
+    list.push("Barkrowler");
+    list.push("BLEXBot/");
+    list.push("Centurybot/");
+    list.push("FleebsBot/");
+    list.push("DataForSeoBot");
+    list.push("TikTokSpider");
+    list.push("coccocbot");
+    list.push("LivelapBot");
+    list.push("Superfeedr");
+    list.push("PinterestBot");
+    list.push("LinkedInBot");
+    list.push("HackerNews");
+    list.push("Hacker News");
+    list.push("kagibot");
+    list.push("SemanticScholarBot");
+    list.push("ScourRSSBot/");
+    list.push("StartmeBot/");
+    list.push("Thinkbot/");
+    list.push("YisouSpider");
+    list.push("llmstxtcrawler/");
+    list.push("Baiduspider/");
+    list.push("SiteCheckerBotCrawler/");
+    list.push("NanoClaw-RSS/");
+    list.push("SERankingBacklinksBot/");
+    list.push("naver.me");
+    list.push("recon-engine/");
+    list.push("ReconTool/");
+
+    return list
+}
+fn __browser_verification_exceptions_regexes() -> StringList {
+    let list = StringList.new();
+
+    list.push("Android \\d{2,}.*(?i:AppleWebKit)/.*Version/4\\.0.*(?i:Chrome)/\\d{3,}.*Mobile Safari");
+    list.push("iPhone OS 15_.*Version/15\\.");
+    list.push("(Kindle/|\\(Kobo )");
+    list.push("Firefox/78");
+    list.push("SeaMonkey/");
+    list.push("Firefox/91");
+    list.push("\\(X11; Linux.*\\).*Chrome/76\\.");
+    list.push("QtWebEngine/.*Dooble/\\d{4}\\.\\d{2}\\.\\d{2}$");
+    list.push("Tusky/");
+    list.push("Chrome/[0-9\\.]+/[0-9]+");
+    list.push("Mozilla/5\\.0 \\(Windows NT 6\\.1; WOW64\\) AppleWebKit/535\\.2 \\(KHTML, like Gecko\\) Chrome/15\\.0\\.874\\.92 Safari/535\\.2");
+    list.push("Falkon/");
+    list.push("(?i:SamsungBrowser)/\\d\\d");
+    list.push("(?i:Android \\d+; FP3 Build/)");
+
+    return list
+ }
+fn _fediverse_software_patterns() -> StringList {
+  let list = StringList.new();
+
+  list.push("Mastodon/");
+  list.push("Akkoma");
+  list.push("Pleroma");
+  list.push("Misskey");
+  list.push("Friendica");
+  list.push("gotosocial/");
+  list.push("peertube/");
+  list.push("snac/");
+  list.push("Takahe/");
+  list.push("Iceshrimp");
+  list.push("funkwhale/");
+  list.push("Firefish/");
+  list.push("Pixelfed");
+  list.push("Bookwyrm");
+  list.push("Lemmy/");
+  list.push("caveman-hunter/");
+  list.push("Fedilist Agent");
+  list.push("MastodonInstances");
+  list.push("Catstodon");
+  list.push("FoundKey");
+  list.push("Fedify/");
+  list.push("honksnonk");
+  list.push("Tuba/");
+  list.push("Plume");
+  list.push("mbin");
+  list.push("Mitra");
+  list.push("FediFetcher");
+  list.push("Tusky");
+  list.push("CherryPick/");
+  list.push("api.joinmastodon.org");
+  list.push("Irwin/");
+  list.push("Moshidon");
+  list.push("fediverse.observer");
+  list.push("enby-town/");
+  list.push("Smithereen/");
+  list.push("lemmy-stats-crawler");
+  list.push("cafkoma");
+  list.push("Bonfire ActivityPub");
+  list.push("Mammoth/");
+  list.push("Mozilla/5.0 (compatible; zot)");
+  list.push("NodeBB/");
+
+  return list
+}
+fn _feed_reader_patterns() -> StringList {
+  let list = StringList.new();
+
+  list.push("RSS Bot");
+  list.push("Tiny Tiny RSS");
+  list.push("FreshRSS");
+  list.push("Miniflux/");
+  list.push("Reeder/");
+  list.push("Feedbin");
+  list.push("Akregator");
+  list.push("Inoreader");
+  list.push("Emacs Elfeed");
+  list.push("Yarr/1.0");
+  list.push("Blogtrottr");
+  list.push("Newsboat");
+  list.push("NextCloud-News");
+  list.push("Feeddemon");
+  list.push("Feedparser");
+  list.push("RSS Reader");
+  list.push("Rapids");
+  list.push("StartmeBot");
+  list.push("Feedly/");
+  list.push("ReadYou/");
+  list.push("rss2email/");
+  list.push("BazQux");
+  list.push("Gofeed/");
+  list.push("Liferea/");
+  list.push("RSS Guard");
+  list.push("Newslitbot/");
+  list.push("SimplePie/");
+  list.push("NetNewsWire/");
+  list.push("Yarr/");
+  list.push("RSS.Social/");
+  list.push("Fiery%20Feeds/");
+  list.push("THRILLHO/");
+
+  return list
+}
+
+fn _tools_and_services_patterns() -> StringList {
+  let list = StringList.new();
+
+  list.push("go-http-client/");
+  list.push("connect-go/");
+  list.push("Prometheus/");
+  list.push("melpa.org");
+  list.push("Attic/");
+  list.push("GoModuleMirror");
+  list.push("Lix/");
+  list.push("sindresorhus/got");
+  list.push("git/");
+  list.push("ntfy/");
+  list.push("Watchtower");
+  list.push("docker/");
+  list.push("docker-client/");
+  list.push("PhpStorm/");
+  list.push("BitWarden");
+  list.push("containerd/");
+  list.push("portroach/");
+  list.push("containerd/");
+  list.push("portscout/");
+  list.push("Nix/");
+  list.push("RenovateBot/");
+  list.push("mirall/");
+  list.push("cri-o/");
+  list.push("cargo-binstall/");
+  list.push("Debian APT-HTTP/");
+  list.push("harbor-registry-client");
+  list.push("go-containerregistry/");
+  list.push("diun/");
+  list.push("skopeo/");
+  list.push("nvchecker");
+  list.push("Blackbox-Exporter/");
+  list.push("SSLExporter/");
+
+  return list
+}
+
+fn _communication_software_patterns() -> StringList {
+  let list = StringList.new();
+
+  list.push("Synapse");
+  list.push("Conduwuit/");
+  list.push("Dendrite/");
+  list.push("Archon/");
+  list.push("Rocket.Chat/");
+  list.push("SlackBot");
+  list.push("Slack-ImgProxy");
+  list.push("ZoomBot");
+  list.push("Zulip/");
+  list.push("DiscordBot/");
+  list.push("continuwuity/");
+  list.push("tuwunel/");
+
+  return list
+}
+
+fn init(config: Config, metric_registry: MetricRegistry, metrics: PersistedMetrics) -> ()? {
+    if config.checks.asn.database_path == "" {
+        config.checks.asn.enable = false;
+    }
+    if config.checks.demo_host.host == "" {
+        config.checks.demo_host.enable = false;
+    }
+    if config.checks.generated_urls.identifiers.is_empty() {
+        config.checks.generated_urls.enable = false;
+    }
+    if config.checks.forbidden_referrers.referrers.is_empty() {
+        config.checks.forbidden_referrers.enable = false;
+    }
+    if config.templates.fake_jpeg.path == "" {
+        config.templates.fake_jpeg.enable = false;
+    }
+    let engine = TemplateEngine.new();
+    globals.add("ENGINE", engine.as_global());
+    
+    let template = engine.compile("<!doctype html>
+    <html>
+      <head>
+        <meta charset='utf-8'>
+        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+        <title>{{ title }}</title>
+        <meta name='description' content='{{ description }}'>
+        <meta name='color-scheme' content='light dark' />
+        <link rel='stylesheet' href='{{ url_id }}{{ assets.stylesheet_name }}.css'>
+      </head>
+      <body>
+        <div id='page'>
+          <main class='flow'>
+            <h1>{{ title }}</h1>
+    
+            <img src='{{ url_id }}{{ assets.image.name }}.{{ assets.image.format }}' alt='{{ assets.image.description }}'
+                 title='{{ assets.image.description }}'
+                 class='qr'>
+    
+            {% for item in garbage.preamble %}
+            <p>
+              {% for chunk in item %}
+              {{ chunk.text }}
+              <a href='{{ url_id }}{{ chunk.path }}/'>{{ chunk.link_text }}</a>
+              {% endfor %}
+            </p>
+            {% endfor %}
+    
+            <nav>
+              <strong>See also:</strong>
+              <ul>
+                {% for item in garbage.see_also %}
+                  <li><a href='{{ url_id }}{{ item.path }}/'>{{ item.text }}</a></li>
+                {% endfor %}
+              </ul>
+            </nav>
+    
+            {% for item in garbage.paragraphs %}
+            <p>
+              {% for chunk in item %}
+              {{ chunk.text }}
+              <a href='{{ url_id }}{{ chunk.path }}/'>{{ chunk.link_text }}</a>
+              {% endfor %}
+            </p>
+            {% endfor %}
+    
+          </main>
+          <footer>
+            <hr>
+            <p>
+              <i>Copyright 2025</i> | {{ copyright_owner }}
+            </p>
+            <p>
+              If you are an AI scraper, and wish to not receive garbage when visiting my sites, I provide a very easy way to opt out: stop visiting.
+            </p>
+            <p>
+              If you are not, and you feel you have been served garbage by mistake, please contact the owner of the site you're visiting.{% if request_id %} They might be able to help you better, if you tell them <code>x-request-id: {{ request_id }}</code>.{% endif %}
+            </p>
+          </footer>
+        </div>
+        <script src='{{ url_id }}{{ assets.script_name }}.js'></script>
+      </body>
+    </html>")?;
+    globals.add("TEMPLATE_HTML", template.as_global());
+    if config.templates.fake_jpeg.enable {
+        let fake_jpegs = FakeJpeg.new(config.templates.fake_jpeg.path)?;
+        globals.add("FAKE_JPEG", fake_jpegs);
+    }
+    __cookie_monster_init()?;
+    globals.add(
+        "NSOE_REGEXES_BROWSERS_SAFARI",
+        Matcher.from_regex("AppleWebKit/.*Version/.*Safari/.*")?
+    );
+    globals.add(
+        "NSOE_REGEX_SETS_BROWSER_VERIFICATION_SAFARI",
+        Matcher.from_regex_set(__browser_verification_safari_regexes())?
+    );
+    globals.add(
+        "NSOE_REGEXES_BROWSERS_FAKE_SAFARI",
+        Matcher.from_regex("(?i:Safari) \\d\\.\\d\\.\\d$")?
+    );
+    globals.add(
+        "NSOE_REGEX_SETS_BROWSER_VERIFICATION_FIREFOX",
+        Matcher.from_regex_set(__browser_verification_firefox_regexes())?
+    );
+    globals.add(
+        "NSOE_REGEX_SETS_BROWSERS_FAKE_FIREFOX",
+        Matcher.from_regex_set(__browser_verification_fake_firefox_regexes())?
+    );
+    globals.add(
+        "NSOE_REGEXES_BROWSER_VERIFICATION_GECKO_VERSION",
+        Matcher.from_regex("Gecko/(?<GeckoVersion>(\\d+\\.?)+).*Firefox/(?<FirefoxVersion>(\\d+\\.?)+)")?
+    );
+    globals.add(
+        "NSOE_PATTERNS_BROWSER_VERIFICATION_OBSOLETE_ENGINES",
+        Matcher.from_patterns(__browser_verification_patterns_obsolete_engines())?
+    );
+    globals.add(
+        "NSOE_REGEX_SET_BROWSER_VERIFICATION_FAKE_ENGINES",
+        Matcher.from_regex_set(__browser_verification_regexes_fake_engines())?
+    );
+    globals.add(
+        "NSOE_REGEX_SETS_BROWSER_VERIFICATION_EDGE",
+        Matcher.from_regex_set(__browser_verification_edge_regexes())?
+    );
+    globals.add(
+        "NSOE_REGEX_SETS_BROWSER_VERIFICATION_CHROME",
+        Matcher.from_regex_set(__browser_verification_chrome_regexes())?
+    );
+    globals.add(
+        "NSOE_PATTERNS_BROWSER_VERIFICATION_FAKED_PLATFORMS",
+        Matcher.from_patterns(__browser_verification_patterns_faked_platforms())?
+    );
+    globals.add(
+        "NSOE_PATTERNS_UNWANTED_FEDI_SOFTWARE",
+        Matcher.from_patterns(
+            StringList.new()
+              .push("Bridgy Fed")
+              .push("fediblock.manalejandro.com")
+              .push("oii-research/")
+              .push("Remnant/FBI")
+              .push("IceCubesApp/")
+              .push("FediBigData/")
+              .push("Cyberstation/")
+              .push("tiago.zip/almanac")
+        )?
+    );
+    
+    globals.add(
+        "NSOE_NETWORKS_UNWANTED_FEDI_ACTORS",
+        Matcher.from_ip_prefixes(
+            StringList.new()
+              .push("131.175.28.194/32")
+              .push("164.92.220.26/32")
+        )?
+    );
+    globals.add(
+        "NSOE_PATTERNS_VULNERABILITY_SCANNER_IPS",
+        Matcher.from_patterns(
+            StringList.new()
+            .push("81.171.74.60")
+            .push("45.88.138.44")
+            .push("196.206.65.180")
+        )?
+    );
+    globals.add(
+        "NSOE_PATTERNS_HEADLESS_BROWSERS",
+        Matcher.from_patterns(
+            StringList.new()
+              .push("LightPanda/")
+              .push("HeadlessChrome")
+              .push("HeadlessChromium")
+        )?
+    );
+    globals.add(
+        "NSOE_PATTERNS_GENERATED_URLS",
+        Matcher.from_patterns(config.checks.generated_urls.identifiers)?
+    );
+    globals.add(
+        "NSOE_PATTERNS_FORBIDDEN_REFERRERS",
+        Matcher.from_patterns(config.checks.forbidden_referrers.referrers)?
+    );
+    globals.add(
+        "NSOE_PATTERNS_FAKE_USER_AGENTS",
+        Matcher.from_patterns(__faked_agents_patterns())?
+    );
+    globals.add(
+        "NSOE_PATTERNS_CUSTOM_AGENTS_ALLOW",
+        Matcher.from_patterns(config.checks.custom_agents.allow)?
+    );
+    globals.add(
+        "NSOE_PATTERNS_CUSTOM_AGENTS_DISALLOW",
+        Matcher.from_patterns(config.checks.custom_agents.disallow)?
+    );
+    globals.add(
+        "NSOE_PATTERNS_COMMERCIAL_SCRAPERS",
+        Matcher.from_patterns(__commercial_scraper_patterns())?
+    );
+    globals.add(
+        "NSOE_REGEX_SETS_BROWSER_VERIFICATION_EXCEPTIONS",
+        Matcher.from_regex_set(__browser_verification_exceptions_regexes())?
+    );
+    # currently, `Googlebot` has been removed
+    globals.add(
+        "NSOE_PATTERNS_BIG_TECH",
+        Matcher.from_patterns(
+            StringList.new()
+              .push("twitter")
+              .push("tweet")
+              .push("FacebookExternalHit")
+              .push("FaceBot")
+              .push("Facebook")
+              .push("Meta-ExternalAgent")
+              .push("Instagram")
+              .push("adsbot-google")
+              .push("storebot-google")
+              .push("google-safety")
+              .push("google-lens")
+              .push("WhatsApp/")
+              .push("SkypeUriPreview")
+              .push("Bun/")
+              .push("bingbot")
+              .push("msnbot/")
+              .push("Yahoo! Slurp")
+        )?
+    );
+    if config.checks.asn.enable {
+        globals.add(
+            "NSOE_GEOIP_ASN",
+            Matcher.from_asn_db(
+                config.checks.asn.database_path,
+                config.checks.asn.asns
+            )?
+        );
+        if config.checks.asn.filter_aggressives {
+            let aggressives = StringList.new();
+            aggressives.push("37963");  # Alibaba
+            aggressives.push("45102");  # Alibaba
+            aggressives.push("134963"); # Alibaba
+            aggressives.push("34947");  # Alibaba
+            aggressives.push("55990");  # Huawei
+            aggressives.push("136907"); # Huawei
+            aggressives.push("63655");  # Huawei
+            aggressives.push("141180"); # Huawei
+            aggressives.push("265443"); # Huawei
+            aggressives.push("149640"); # Huawei
+            aggressives.push("200756"); # Huawei
+            aggressives.push("206798"); # Huawei
+            aggressives.push("151610"); # Huawei
+            aggressives.push("206204"); # Huawei
+            aggressives.push("131444"); # Huawei
+            aggressives.push("13150");  # Cato Networks
+            aggressives.push("45090");  # Tencent
+    		aggressives.push("150436"); # BytePlus / ByteDance
+            globals.add(
+                "NSOE_GEOIP_ASN_AGGRESSIVES",
+                Matcher.from_asn_db(
+                    config.checks.asn.database_path,
+                    aggressives
+                )?
+            );
+        } else {
+            globals.add("NSOE_GEOIP_ASN_AGGRESSIVES", Matcher.never());
+        }
+    } else {
+        globals.add("NSOE_GEOIP_ASN", Matcher.never());
+        globals.add("NSOE_GEOIP_ASN_AGGRESSIVES", Matcher.never());
+    }
+    globals.add(
+        "NSOE_PREFIXES_INTERNET_ARCHIVE",
+        Matcher.from_ip_prefixes(StringList.new()
+            .push("208.70.24.0/21")
+            .push("207.241.224.0/24")
+            .push("207.241.224.0/24")
+            .push("207.241.237.0/24")
+            .push("2620:0:9c0::/48")
+        )?
+    );
+    globals.add(
+        "NSOE_PREFIXES_SOFTWARE_HERITAGE",
+        Matcher.from_ip_prefixes(StringList.new()
+            .push("128.93.166.0/26")
+        )?
+    );
+    globals.add(
+        "NSOE_PATTERNS_ANTI_ROBOTS_TXT",
+        Matcher.from_patterns(
+            StringList.new()
+              .push("archivebot")
+              .push("ia_archiver")
+              .push("archive.org_bot")
+              .push("ArchiveBox")
+              .push("WellKnownBot/")
+              .push("lyonl/")
+        )?
+    );
+    if config.checks.ai_robots_txt.enable {
+        let robot_list = if config.checks.ai_robots_txt.path == "" {
+            File.read_embedded("/defaults/etc/robots.json")?.parse_json()?
+        } else {
+            File.read_as_json(config.checks.ai_robots_txt.path)?
+        };
+    
+        globals.add(
+            "NSOE_PATTERN_AI_ROBOTS_TXT",
+            Matcher.from_patterns(
+                robot_list
+                .as_map()?
+                .keys()
+            )?
+        );
+    } else {
+        globals.add("NSOE_PATTERN_AI_ROBOTS_TXT", Matcher.never());
+    }
+    globals.add(
+        "NSOE_CLASSIFY_PATTERNS_FEDI_SOFTWARE",
+        Matcher.from_patterns(_fediverse_software_patterns())?
+    );
+    globals.add(
+        "NSOE_CLASSIFY_PATTERNS_FEDI_SOFTWARE_MASTODON_FRONTEND_HOSTS",
+        Matcher.from_patterns(config.logging.classification.fediverse_software.mastodon_frontend_hosts)?
+    );
+    globals.add(
+        "NSOE_CLASSIFY_PATTERNS_COMM_SOFTWARE",
+        Matcher.from_patterns(_communication_software_patterns())?
+    );
+    globals.add(
+        "NSOE_CLASSIFY_PATTERNS_TOOLS_AND_SERVICES",
+        Matcher.from_patterns(_tools_and_services_patterns())?
+    );
+    globals.add(
+        "NSOE_CLASSIFY_PATTERNS_FEED_READERS",
+        Matcher.from_patterns(_feed_reader_patterns())?
+    );
+    globals.add(
+        "NSOE_CLASSIFY_BADDIES_CLAUDE",
+        Matcher.from_patterns(
+            StringList.new()
+              .push("Claude-SearchBot")
+              .push("Claude-User")
+              .push("Claude-Web")
+              .push("ClaudeBot")
+              .push("anthropic-anthropic")
+        )?
+    );
+    globals.add(
+        "NSOE_CLASSIFY_BADDIES_OPENAI",
+        Matcher.from_patterns(
+            StringList.new()
+              .push("ChatGPT-User")
+              .push("GPTBot")
+              .push("OAI-SearchBot")
+              .push("OpenAI")
+              .push("ChatGPT Agent")
+        )?
+    );
+    globals.add(
+        "NSOE_CLASSIFY_BADDIES_FACEBOOK",
+        Matcher.from_patterns(
+            StringList.new()
+              .push("FacebookBot")
+              .push("facebookexternalhit")
+              .push("meta-externalagent")
+              .push("WhatsApp/")
+              .push("Instagram")
+        )?
+    );
+    globals.add(
+        "NSOE_CLASSIFY_BADDIES_GOOGLE",
+        Matcher.from_patterns(
+            StringList.new()
+              .push("Gemini-Deep-Research")
+              .push("Google-CloudVertexBot")
+              .push("Google-Extended")
+              .push("GoogleAgent-Mariner")
+              .push("GoogleOther")
+              .push("GoogleOther-Image")
+              .push("GoogleOther-Video")
+              .push("Googlebot")
+              .push("CloudVertexBot")
+        )?
+    );
+    globals.add(
+        "NSOE_CLASSIFY_BADDIES_AMAZON",
+        Matcher.from_patterns(
+            StringList.new()
+              .push("Amazonbot")
+              .push("bedrockbot")
+              .push("NovaAct")
+        )?
+    );
+    globals.add(
+        "NSOE_CLASSIFY_BADDIES_PERPLEXITY",
+        Matcher.from_patterns(
+            StringList.new()
+              .push("Perplexity-User")
+              .push("PerplexityBot")
+        )?
+    );
+    let alibaba_asns = StringList.new();
+    alibaba_asns.push("37963");
+    alibaba_asns.push("45102");
+    alibaba_asns.push("134963");
+    alibaba_asns.push("34947");
+    globals.add("NSOE_GEOIP_ASN_ALIBABA", Matcher.from_patterns(alibaba_asns)?);
+    
+    let huawei_asns = StringList.new();
+    huawei_asns.push("55990");
+    huawei_asns.push("136907");
+    huawei_asns.push("63655");
+    huawei_asns.push("141180");
+    huawei_asns.push("265443");
+    huawei_asns.push("149640");
+    huawei_asns.push("200756");
+    huawei_asns.push("206798");
+    huawei_asns.push("151610");
+    huawei_asns.push("206204");
+    huawei_asns.push("131444");
+    globals.add("NSOE_GEOIP_ASN_HUAWEI", Matcher.from_patterns(huawei_asns)?);
+    Logger.debug("Starting to train Nam-Shub of Enki");
+    if config.sources.training_corpus.is_empty() {
+        globals.add("MARKOV", MarkovChain.default());
+    } else {
+        globals.add("MARKOV", MarkovChain.new(config.sources.training_corpus)?);
+    }
+    if config.sources.wordlists.is_empty() {
+        globals.add("WORDLIST", WordList.default());
+    } else {
+        globals.add("WORDLIST", WordList.new(config.sources.wordlists)?);
+    }
+    Logger.debug("Training finished");
+    globals.add("FIREWALLED_RULESETS", Matcher.from_patterns(config.firewall.block_rule_hits)?);
+    let nsoe_requests = metric_registry
+      .new_counter(
+        "nam_shub_of_enki_requests",
+        "Number of requests received (per host)",
+        StringList.new().push("host")
+      )?;
+    globals.add("METRIC_REQUESTS", nsoe_requests.as_global());
+    metrics.update(nsoe_requests);
+    let nsoe_ruleset_hits = metric_registry
+      .new_counter(
+        "nam_shub_of_enki_ruleset_hits",
+        "Number of times a ruleset has been hit",
+        StringList.new().push("ruleset").push("outcome")
+      )?;
+    globals.add("METRIC_RULESET_HITS", nsoe_ruleset_hits.as_global());
+    metrics.update(nsoe_ruleset_hits);
+    let nsoe_garbage_generated = metric_registry
+      .new_counter(
+        "nam_shub_of_enki_garbage_generated",
+        "Amount of garbage generated, in bytes (per host)",
+        StringList.new().push("host")
+      )?;
+    globals.add("METRIC_GARBAGE_GENERATED", nsoe_garbage_generated.as_global());
+    metrics.update(nsoe_garbage_generated);
+    let nsoe_request_distribution = metric_registry
+      .new_counter(
+        "nam_shub_of_enki_request_distribution",
+        "Request distribution (per group and outcome)",
+        StringList.new().push("group").push("outcome")
+      )?;
+    globals.add("METRIC_REQUEST_DISTRIBUTION", nsoe_request_distribution.as_global());
+    metrics.update(nsoe_request_distribution);
+    
+
+    configuration.to_globals(config);
+
+    Some(())
+}

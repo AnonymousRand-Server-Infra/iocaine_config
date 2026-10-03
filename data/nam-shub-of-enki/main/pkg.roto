@@ -1,0 +1,14 @@
+## SPDX-FileCopyrightText: 2025 Gergely Nagy
+## SPDX-FileContributor: Gergely Nagy
+##
+## SPDX-License-Identifier: MIT
+
+import nam_shub_of_enki;
+
+fn decide(request: Request) -> String? {
+    nam_shub_of_enki.incantation(request)
+}
+
+fn output(request: Request, decision: String?) -> Response? {
+    nam_shub_of_enki.utterance(request, decision)
+}

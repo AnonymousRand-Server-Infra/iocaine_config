@@ -1,0 +1,87 @@
+## SPDX-FileCopyrightText: 2025 Gergely Nagy
+## SPDX-FileContributor: Gergely Nagy
+##
+## SPDX-License-Identifier: MIT
+
+import super.templates;
+import super.configuration.Config;
+
+fn __manual() -> String {
+    return "<!doctype html>
+<html>
+<head>
+    <title>Cookie monster!</title>
+    <meta charset='utf-8'>
+    <meta name='color-scheme' content='light dark' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+</head>
+<body>
+  <p>This page is protected by the Cookie Monster. You now have its undivided attention. To avoid getting devoured, say <a href=\"?trans-rights=human-rights\">Trans rights are Human Rights</a>.</p>
+</body>"
+}
+fn __auto_pass(cookie_name: String) -> String {
+    return (f"<!doctype html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv=\"refresh\" content=\"1; url=?trans-rights=human-rights\">
+    <meta name='color-scheme' content='light dark' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Cookie monster!</title>
+</head>
+<body>
+  <p>This is an automated check to get rid of most bots. If you have JavaScript enabled, it should redirect to the real page soon. If you don't, it still should redirect soon, but you can <a href=\"?trans-rights=human-rights\">click here</a> if you're fast.</p>
+  <script>document.cookie=\"{cookie_name}=passed;path=/\";window.location.reload();</script>
+</body>")
+}
+
+fn generate(config: Config, request: Request, decision: String?) -> Response? {
+    let verdict = match decision {
+        Some(v) -> v,
+        None -> "garbage",
+    };
+
+    if verdict == "not-for-us" {
+        return not_for_us()
+    }
+    if verdict.starts_with("challenge:") {
+        return challenge(config, request, verdict)
+    }
+    garbage(config, request)
+}
+fn garbage(config: Config, request: Request) -> Response? {
+    let response = ResponseBuilder.new();
+    templates.garbage(config, request, response);
+
+    METRIC_GARBAGE_GENERATED.inc_by_for1(response.content_length(), request.header("host"));
+    return Some(response.build())
+}
+fn challenge(config: Config, request: Request, verdict: String) -> Response? {
+    let response = ResponseBuilder.new();
+    let cookie_name = config.checks.cookie_monster.cookie_name;
+
+    if request.query("trans-rights") == "human-rights" {
+        response.status_code(307)
+        .header("set-cookie", f"{cookie_name}=passed;path=/;HttpOnly;Max-Age=604800;SameSite=Lax")
+        .header("location", request.path());
+    } else {
+        let text = if verdict == "challenge:automatic" {
+            __auto_pass(cookie_name)
+        } else {
+            __manual()
+        };
+
+        response.header("content-type", "text/html");
+        response.body_from_string(text);
+        if config.templates.minify {
+            response.minify();
+        }
+    }
+    return Some(response.build())
+}
+fn not_for_us() -> Response? {
+    let response = ResponseBuilder.new()
+      .status_code(421);
+
+    return Some(response.build())
+}

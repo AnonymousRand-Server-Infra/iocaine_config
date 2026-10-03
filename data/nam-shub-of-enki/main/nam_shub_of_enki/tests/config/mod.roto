@@ -1,0 +1,369 @@
+## SPDX-FileCopyrightText: 2025 Gergely Nagy
+## SPDX-FileContributor: Gergely Nagy
+##
+## SPDX-License-Identifier: MIT
+
+import super.super.configuration.Config;
+
+fn minimal() -> Config {
+    Config {
+        sources: {
+            wordlists: StringList.new(),
+            training_corpus: StringList.new(),
+        },
+        templates: {
+            minify: true,
+            fake_jpeg: {
+                enable: true,
+                path: "",
+            },
+        },
+        logging: {
+            enable: false,
+            classification: {
+                enable: false,
+                fediverse_software: {
+                    mastodon_frontend_hosts: StringList.new(),
+                },
+            },
+        },
+        firewall: {
+            block_rule_hits: StringList.new().push("generated-url"),
+        },
+        ordering: StringList.new()
+          .push("demo")
+          .push("cgi-bin-trap")
+          .push("asn")
+          .push("custom-agents")
+          .push("firefox-ai")
+          .push("cloudflare-workers")
+          .push("ai-agents")
+          .push("archiver")
+          .push("headless-browser")
+          .push("ai.robots.txt")
+          .push("vulnerability-scanner")
+          .push("fake-user-agent")
+          .push("big-tech")
+          .push("anti-robots.txt")
+          .push("commercial-scrapers")
+          .push("unwanted-fedi-actors")
+          .push("bad-browser")
+          .push("browser-verification")
+          .push("generated-url")
+          .push("forbidden-referrer")
+          .push("cookie-monster"),
+        checks: {
+            asn: {
+                enable: true,
+                filter_aggressives: true,
+                database_path: "",
+                asns: StringList.new(),
+                request_logging: false,
+            },
+            ai_agents: {
+                enable: true,
+            },
+            demo_host: {
+                enable: true,
+                host: "",
+            },
+            cookie_monster: {
+                enable: true,
+                forgejo_hosts: StringList.new(),
+                fediverse_hosts: StringList.new(),
+                forgejo_challenge: "manual",
+                cookie_name: "x-robot-challenge",
+            },
+            custom_agents: {
+                allow: StringList.new(),
+                disallow: StringList.new(),
+            },
+            generated_urls: {
+                enable: true,
+                identifiers: StringList.new(),
+            },
+            ai_robots_txt: {
+                enable: true,
+                path: "",
+            },
+            cgi_bin_trap: {
+                enable: true,
+            },
+            cloudflare_workers: {
+                enable: true,
+            },
+            browser_verification: {
+                enable: true,
+            },
+            firefox_ai: {
+                enable: true,
+            },
+            headless_browsers: {
+                enable: true,
+            },
+            vulnerability_scanner: {
+                enable: true,
+            },
+            fake_agents: {
+                enable: true,
+            },
+            unwanted_fedi_software: {
+                enable: true,
+            },
+            forbidden_referrers: {
+                enable: true,
+                referrers: StringList.new(),
+            },
+            archivers: {
+                enable: false,
+            },
+            anti_robots_txt: {
+                enable: false,
+            },
+            big_tech: {
+                enable: false,
+            },
+            commercial_scrapers: {
+                enable: false,
+            },
+        },
+    }
+}
+fn recommended(with_classification: bool) -> Config {
+    let config = minimal();
+    config.logging.enable = true;
+    config.logging.classification.enable = with_classification;
+
+    return config
+}
+fn default() -> Config {
+    let config = recommended(true);
+    config.checks.archivers.enable = true;
+    config.checks.anti_robots_txt.enable = true;
+    config.checks.big_tech.enable = true;
+    config.checks.commercial_scrapers.enable = true;
+    config.checks.asn.request_logging = true;
+
+    return config
+}
+fn from_iocaine() -> Config? {
+    let table = config;
+
+    let inherits = table.get("inherits")?.as_str()?;
+    let inherited_config = if inherits == "minimal" {
+        Some(minimal())
+    } else if inherits == "recommended" {
+        Some(recommended(true))
+    } else if inherits == "default" {
+        Some(default())
+    } else {
+        Logger.error("Invalid value set for `inherits`: " + inherits);
+        None
+    };
+    let config = inherited_config?;
+    if table.has("sources") {
+        let sources = table.get("sources")?.as_map()?;
+        if sources.has("training-corpus") {
+            config.sources.training_corpus = str_or_list(sources.get("training-corpus")?)?;
+        }
+        if sources.has("wordlists") {
+            config.sources.wordlists = str_or_list(sources.get("wordlists")?)?;
+        }
+    }
+    if table.has("templates") {
+        let templates = table.get("templates")?.as_map()?;
+        if templates.has("minify") {
+            config.templates.minify = templates.get("minify")?.as_bool()?;
+        }
+        if templates.has("fake-jpeg") {
+            let fj = templates.get("fake-jpeg")?.as_map()?;
+            if fj.has("enable") {
+                config.templates.fake_jpeg.enable = fj.get("enable")?.as_bool()?;
+            }
+            if fj.has("path") {
+                config.templates.fake_jpeg.path = fj.get("path")?.as_str()?;
+            }
+        }
+    }
+    if table.has("logging") {
+        let logging = table.get("logging")?.as_map()?;
+        if logging.has("enable") {
+            config.logging.enable = logging.get("enable")?.as_bool()?;
+        }
+    
+        if logging.has("classification") {
+            let classification = logging.get("classification")?.as_map()?;
+            if classification.has("enable") {
+                config.logging.classification.enable = classification.get("enable")?.as_bool()?;
+            }
+    
+            if classification.has("fediverse-software") {
+                let table = classification.get("fediverse-software")?.as_map()?;
+                if table.has("mastodon-frontend-hosts") {
+                    config.logging.classification.fediverse_software.mastodon_frontend_hosts =
+                      str_or_list(table.get("mastodon-frontend-hosts")?)?;
+                }
+            }
+        }
+    }
+    if table.has("firewall") {
+        let fw = table.get("firewall")?.as_map()?;
+        if fw.has("block-rule-hits") {
+            config.firewall.block_rule_hits = str_or_list(fw.get("block-rule-hits")?)?;
+        }
+    }
+    if table.has("ordering") {
+        config.ordering = str_or_list(table.get("ordering")?)?;
+    }
+    if table.has("checks") {
+        let checks = table.get("checks")?.as_map()?;
+    
+        if checks.has("enable") {
+            let enabled_checks = str_or_list(checks.get("enable")?)?;
+            config = __set_checks_if_in_list(config, enabled_checks, true);
+        }
+        if checks.has("disable") {
+            let disabled_checks = str_or_list(checks.get("disable")?)?;
+            config = __set_checks_if_in_list(config, disabled_checks, false);
+        }
+    
+        if checks.has("asn") {
+            let m = checks.get("asn")?.as_map()?;
+            if m.has("database-path") {
+                config.checks.asn.database_path = m.get("database-path")?.as_str()?;
+            }
+            if m.has("asns") {
+                config.checks.asn.asns = str_or_list(m.get("asns")?)?;
+            }
+            if m.has("request-logging") {
+                config.checks.asn.request_logging = m.get("request-logging")?.as_bool()?;
+            }
+            if m.has("filter-aggressives") {
+                config.checks.asn.filter_aggressives = m.get("filter-aggressives")?.as_bool()?;
+            }
+        }
+        if checks.has("ai-robots-txt") {
+            let ai_robots_txt = checks.get("ai-robots-txt")?.as_map()?;
+            if ai_robots_txt.has("path") {
+                config.checks.ai_robots_txt.path = ai_robots_txt.get("path")?.as_str()?;
+            }
+        }
+        if checks.has("cookie-monster") {
+            let cookie_monster = checks.get("cookie-monster")?.as_map()?;
+            if cookie_monster.has("forgejo-hosts") {
+                config.checks.cookie_monster.forgejo_hosts =
+                  str_or_list(cookie_monster.get("forgejo-hosts")?)?;
+            }
+            if cookie_monster.has("fediverse-hosts") {
+                config.checks.cookie_monster.fediverse_hosts =
+                  str_or_list(cookie_monster.get("fediverse-hosts")?)?;
+            }
+            if cookie_monster.has("cookie-name") {
+                config.checks.cookie_monster.cookie_name =
+                  cookie_monster.get("cookie-name")?.as_str()?;
+            }
+            if cookie_monster.has("forgejo-challenge") {
+                config.checks.cookie_monster.forgejo_challenge =
+                  cookie_monster.get("forgejo-challenge")?.as_str()?;
+            }
+        }
+        if checks.has("demo-host") {
+            let demo_host = checks.get("demo-host")?.as_map()?;
+            if demo_host.has("host") {
+                config.checks.demo_host.host = demo_host.get("host")?.as_str()?;
+            }
+        }
+        if checks.has("generated-urls") {
+            let gen_urls = checks.get("generated-urls")?.as_map()?;
+            if gen_urls.has("identifiers") {
+                config.checks.generated_urls.identifiers =
+                  str_or_list(gen_urls.get("identifiers")?)?;
+            }
+        }
+        if checks.has("forbidden-referrers") {
+            let t = checks.get("forbidden-referrers")?.as_map()?;
+            if t.has("referrers") {
+                config.checks.forbidden_referrers.referrers =
+                  str_or_list(t.get("referrers")?)?;
+            }
+        }
+        if checks.has("custom-agents") {
+            let t = checks.get("custom-agents")?.as_map()?;
+            if t.has("allow") {
+                config.checks.custom_agents.allow = str_or_list(t.get("allow")?)?;
+            }
+            if t.has("disallow") {
+                config.checks.custom_agents.disallow = str_or_list(t.get("disallow")?)?;
+            }
+        }
+    }
+
+    Some(config)
+}
+
+fn str_or_list(v: Value) -> StringList? {
+    match v.as_vector() {
+        Some(vector) -> vector.as_string_list(),
+        None -> Some(StringList.new().push(v.as_str()?)),
+    }
+}
+fn __set_checks_if_in_list(config: Config, list: StringList, value: bool) -> Config {
+    if list.contains("asn") {
+        config.checks.asn.enable = value;
+    }
+    if list.contains("ai-agents") {
+        config.checks.ai_agents.enable = value;
+    }
+    if list.contains("ai-robots-txt") {
+        config.checks.ai_robots_txt.enable = value;
+    }
+    if list.contains("fake-agents") {
+        config.checks.fake_agents.enable = value;
+    }
+    if list.contains("vulnerability-scanner") {
+        config.checks.vulnerability_scanner.enable = value;
+    }
+    if list.contains("browser-verification") {
+        config.checks.browser_verification.enable = value;
+    }
+    if list.contains("commercial-scrapers") {
+        config.checks.commercial_scrapers.enable = value;
+    }
+    if list.contains("cookie-monster") {
+        config.checks.cookie_monster.enable = value;
+    }
+    if list.contains("generated-urls") {
+        config.checks.generated_urls.enable = value;
+    }
+    if list.contains("firefox-ai") {
+        config.checks.firefox_ai.enable = value;
+    }
+    if list.contains("cgi-bin-trap") {
+        config.checks.cgi_bin_trap.enable = value;
+    }
+    if list.contains("archivers") {
+        config.checks.archivers.enable = value;
+    }
+    if list.contains("demo-host") {
+        config.checks.demo_host.enable = value;
+    }
+    if list.contains("anti-robots-txt") {
+        config.checks.anti_robots_txt.enable = value;
+    }
+    if list.contains("headless-browsers") {
+        config.checks.headless_browsers.enable = value;
+    }
+    if list.contains("big-tech") {
+        config.checks.big_tech.enable = value;
+    }
+    if list.contains("forbidden-referrers") {
+        config.checks.forbidden_referrers.enable = value;
+    }
+    if list.contains("unwanted-fedi-software") {
+        config.checks.unwanted_fedi_software.enable = value;
+    }
+    if list.contains("cloudflare-workers") {
+        config.checks.cloudflare_workers.enable = value;
+    }
+    config
+}

@@ -1,0 +1,25 @@
+declare-handler nam-shub-of-enki path="/data/nam-shub-of-enki" {
+    inherits "default"
+
+    sources {
+        training-corpus "/data/corpus/das_kapital_i.txt"
+        wordlists "/data/corpus/words.txt"
+    }
+
+    checks {
+        ai-robots-txt {
+            enable
+            path "/data/ai.robots.txt-robots.json"
+        }
+        // this should be a unique, identifiable word to tell what requests came from the maze
+        generated-urls {
+            identifiers "meow-meow-meow"
+        }
+
+        enable ai-agents
+        enable big-tech
+        enable commercial-scrapers
+        enable firefox-ai
+        disable archivers
+    }
+}
