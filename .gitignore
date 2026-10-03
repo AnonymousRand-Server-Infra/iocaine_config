@@ -1,2 +1,6 @@
 # iocaine generated files
 state.json
+
+# vim
+.*.swp
+.*.swo
