@@ -1,6 +1,8 @@
-# iocaine generated files
-state.json
+# security
+.env
+# SYNC: naming convention!
+*_privkey
 
 # vim
-.*.swp
-.*.swo
+*.swp
+*.swo

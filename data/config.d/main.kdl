@@ -1,0 +1,8 @@
+// SYNC: make sure this is inside a persistent docker volume, and where iocaine has write perms!
+state-directory "/run/iocaine/"
+
+http-server default {
+    // SYNC: socket with nginx!! (i don't think there's a way to fill this from an env var >w<)
+    bind "/run/sockets/iocaine.sock" unix-socket-access="group"
+    use handler-from=nam-shub-of-enki
+}

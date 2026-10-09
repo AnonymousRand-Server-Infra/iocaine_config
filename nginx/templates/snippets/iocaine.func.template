@@ -1,16 +1,16 @@
 # instructions:
-# 1. put this file in `/etc/nginx/snippets/iocaine.func`.
+# 1. put this file in `/etc/nginx/conf.d/snippets/iocaine.func`.
 # 2. for every nginx site that wants to use iocaine:
 #     1. rename their location blocks to start with `@`.
 #     2. add a location block with each of the old names, but only containing the following:
 #       ```
 #       set $iocaine_upstream @<location name>;
-#       include snippets/iocaine.func;
+#       include conf.d/snippets/iocaine.func;
 #       ```
+
 proxy_cache off;
 proxy_intercept_errors on;
-proxy_set_header Host $host;
-proxy_pass http://127.0.0.1:42069; # this should be iocaine's location!
+proxy_pass http://unix:${IOCAINE_SCKT};
 
 recursive_error_pages on;
 error_page 421 = $iocaine_upstream;

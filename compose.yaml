@@ -1,21 +1,39 @@
-# SPDX-FileCopyrightText: Gergely Nagy
-# SPDX-FileContributor: Gergely Nagy
-#
-# SPDX-License-Identifier: MIT
+include:
+  - ${PATH_TO_ROOT_DOCKER_PROJ:?}/shared_sckts.yaml
 
 services:
   iocaine:
-    image: git.madhouse-project.org/iocaine/iocaine:3
+    container_name: iocaine
+    extends:
+      file: ${PATH_TO_ROOT_DOCKER_PROJ:?}/shared_sckts.yaml
+      service: shared_sckts_user
+    profiles:
+      - ${DOCKER_DEFAULT_PROFILE:?}
+    image: git.madhouse-project.org/iocaine/iocaine:3 # :3
     restart: unless-stopped
-    ports:
-      - '127.0.0.1:42069:42069'
-      - '127.0.0.1:42042:42042' # for metrics
+    user: ${DOCKER_NONROOT_USER:?}
+    # SYNC: config path
+    command: --config-path /data/config.d/
     volumes:
-      - ./data:/data
-      - iocaine-state:/run/iocaine
-    command: --config-path /data/etc/config.d
+      # container-generated data
+      # SYNC: paths in which container produces data (e.g. in config)
+      - type: volume
+        source: iocaine_run
+        target: /run/iocaine/
+      # host-provided data
+      # SYNC: source path with host path
+      - type:  bind
+        source: ./data/
+        target: /data/
+        read_only: true
     environment:
       - RUST_LOG=iocaine=info
+    pre_start:
+      - image: alpine:latest
+        user: "0:0"
+        # SYNC: path with volume
+        command: chown -R ${DOCKER_NONROOT_USER:?} /run/iocaine/
+    # the docker image is too minimal to support any healthchecking; use `service_started` instead
 
 volumes:
-  iocaine-state:
+  iocaine_run:

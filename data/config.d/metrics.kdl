@@ -1,5 +1,6 @@
 prometheus-server metrics {
-    bind "0.0.0.0:42042"
+    // SYNC: socket with nginx!! (i don't think there's a way to fill this from an env var >w<)
+    bind "/run/sockets/iocaine_metrics.sock" unix-socket-access="group"
     persist-path "/run/iocaine/qmk-metrics.json"
     persist-interval "1h"
 }
