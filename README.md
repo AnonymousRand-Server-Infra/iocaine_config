@@ -1,4 +1,4 @@
-# begone, clankers
+# iocaine config
 
 we have always liked to destroy things, in the name of creation.
 
