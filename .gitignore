@@ -1,7 +1,5 @@
 # security
 .env
-# SYNC: naming convention!
-*_privkey
 
 # vim
 *.swp
