@@ -16,7 +16,7 @@ services:
     command: --config-path /data/config.d/
     volumes:
       # container-generated data
-      # SYNC: paths in which container produces data (e.g. in config)
+      # SYNC: paths in which the container produces data (e.g. in config)
       - type: volume
         source: iocaine_run
         target: /run/iocaine/
