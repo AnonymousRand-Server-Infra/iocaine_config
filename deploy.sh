@@ -14,6 +14,7 @@ source ./.env
 docker compose --profile "$DOCKER_DEFAULT_PROFILE" down
 
 # otherwise (e.g. if they were started by the root docker project), we do a project-agnostic restart
+# SYNC: containers and depended on containers!
 docker stop iocaine && docker rm -v iocaine
 
 docker system prune --force
