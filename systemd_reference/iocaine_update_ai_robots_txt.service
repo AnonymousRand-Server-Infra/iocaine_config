@@ -4,5 +4,5 @@ Description=periodic update for iocaine's list of ai robots
 [Service]
 Type=oneshot
 User=root
-WorkingDirectory=[REPLACE: absolute path to `iocaine` folder]
+WorkingDirectory=<REPLACE: absolute path to iocaine's directory>
 ExecStart=/usr/bin/env bash update_ai_robots_txt.sh
