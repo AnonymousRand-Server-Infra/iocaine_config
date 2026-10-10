@@ -3,6 +3,7 @@ Description=periodic update for iocaine's list of ai robots
 
 [Service]
 Type=oneshot
+# this user needs to be someone who can redeploy docker
 User=root
 WorkingDirectory=<REPLACE: absolute path to iocaine's base directory>
 ExecStart=/usr/bin/env bash update_ai_robots_txt.sh
