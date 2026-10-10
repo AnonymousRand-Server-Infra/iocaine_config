@@ -12,6 +12,8 @@ path_to_ai_robots_txt=./data/ai.robots.txt-robots.json
 
 source ./.env
 
+# NOTE: since i don't want to force a `sync_dotenvs.sh` run from here, you must ensure
+# it has already been run to populate the necessary env variables!
 sudo -u "#$HOST_NONROOT_UID" \
     curl -L https://github.com/ai-robots-txt/ai.robots.txt/raw/refs/heads/main/robots.json \
     -o "$path_to_ai_robots_txt"
