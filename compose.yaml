@@ -27,7 +27,7 @@ services:
         target: /data/
         read_only: true
     environment:
-      - RUST_LOG=iocaine=info
+      - RUST_LOG=iocaine=debug
     pre_start:
       - image: alpine:latest
         user: "0:0"
