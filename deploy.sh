@@ -11,13 +11,8 @@ set +e
 source ./.env
 set -e
 
-# try this in our current directory first in case the services to restart were started by
-# this project originally
-docker compose --profile "$DOCKER_DEFAULT_PROFILE" down
-
-# otherwise (e.g. if they were started by the root docker project), we do a project-agnostic restart
-# SYNC: containers and depended on containers!
-docker stop iocaine && docker rm -v iocaine
+chmod +x ./stop.sh
+./stop.sh
 
 docker system prune --force
 docker compose --profile "$DOCKER_DEFAULT_PROFILE" build --no-cache

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+set -ex
+
+# this makes sure that this script always runs in its own directory so that it pulls
+# the right `.env`, for instance (this should also be an absolute path)
+script_path="$(dirname "$(realpath "${BASH_SOURCE[0]:-$0}")")"
+cd "$script_path"
+
+# still need this for `docker compose down` to succeed
+set +e
+source ./.env
+set -e
+
+# try this in our current directory first in case the services to stop were started by
+# this project originally
+docker compose --profile "$DOCKER_DEFAULT_PROFILE" down
+
+# otherwise (e.g. if they were started by the root docker project), we do a project-agnostic stop
+# SYNC: containers and depended on containers!
+docker stop iocaine && docker rm -v iocaine
