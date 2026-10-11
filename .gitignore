@@ -1,6 +1,5 @@
 # security
 *.env
-.*.env
 
 # other variable things
 Dockerfile.dockerignore
