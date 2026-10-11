@@ -1,38 +1,43 @@
 include:
-  - ${PATH_TO_ROOT_DOCKER_PROJ:?}/shared_sckts.yaml
+  - ${PATH_TO_ROOT_DOCKER_PROJ:?}/${PATH_FROM_ROOT_TO_UTILS:?}/shared_sckts.yaml
 
 services:
   iocaine:
     container_name: iocaine
     extends:
-      file: ${PATH_TO_ROOT_DOCKER_PROJ:?}/shared_sckts.yaml
+      file: ${PATH_TO_ROOT_DOCKER_PROJ:?}/${PATH_FROM_ROOT_TO_UTILS:?}/shared_sckts.yaml
       service: shared_sckts_user
     profiles:
       - ${DOCKER_DEFAULT_PROFILE:?}
-    image: git.madhouse-project.org/iocaine/iocaine:3 # :3
+    build:
+      # note that dockerfile cannot access directories above this
+      context: ${PATH_TO_ROOT_DOCKER_PROJ:?}
+      dockerfile: ${PATH_FROM_ROOT_TO_IOCAINE:?}/Dockerfile
+      args:
+        CPU_ARCH: ${CPU_ARCH:?}
+        DOCKER_ROOT_USER: ${DOCKER_ROOT_USER:?}
+        DOCKER_NONROOT_USER: ${DOCKER_NONROOT_USER:?}
+        IOCAINE_CONFIG_SRC_FILES: ${IOCAINE_CONFIG_SRC_FILES:?}
+        IOCAINE_CONFIG_DEST_DIR: ${IOCAINE_CONFIG_DEST_DIR:?}
+        IOCAINE_RUN_DEST_DIR: ${IOCAINE_RUN_DEST_DIR:?}
+        PATH_FROM_ROOT_TO_IOCAINE: ${PATH_FROM_ROOT_TO_IOCAINE:?}
+    # SYNC: config path inside container
+    command: --config-path ${IOCAINE_CONFIG_DEST_DIR:?}/config.d/
     restart: unless-stopped
     user: ${DOCKER_NONROOT_USER:?}
-    # SYNC: config path
-    command: --config-path /data/config.d/
     volumes:
       # container-generated data
-      # SYNC: paths in which the container produces data (e.g. in config)
       - type: volume
         source: iocaine_run
-        target: /run/iocaine/
-      # host-provided data
-      # SYNC: source path with host path
-      - type:  bind
-        source: ./data/
-        target: /data/
-        read_only: true
+        target: ${IOCAINE_RUN_DEST_DIR:?}
+    env_file:
+      # for `envsubst`
+      # i don't think there's a way to store a dynamic list in an env var, hence this bullshit
+      # make sure this accommodates all the files you need, and keep an `.empty.env` as a fallback
+      - ${ENVSUBST_ENV_FILE_1:-.empty.env}
+      - ${ENVSUBST_ENV_FILE_2:-.empty.env}
     environment:
-      - RUST_LOG=iocaine=info
-    pre_start:
-      - image: alpine:latest
-        user: "0:0"
-        # SYNC: path with volume
-        command: chown -R ${DOCKER_NONROOT_USER:?} /run/iocaine/
+      RUST_LOG: iocaine=info
     # the docker image is too minimal to support any healthchecking; use `service_started` instead
 
 volumes:

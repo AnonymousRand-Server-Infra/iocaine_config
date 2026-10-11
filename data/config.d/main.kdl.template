@@ -1,0 +1,7 @@
+// make sure this is inside a persistent docker volume, and where iocaine has write perms!
+state-directory "${IOCAINE_RUN_DEST_DIR}"
+
+http-server default {
+    bind "${IOCAINE_SCKT}" unix-socket-access="group"
+    use handler-from=nam-shub-of-enki
+}

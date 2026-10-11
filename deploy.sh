@@ -7,7 +7,9 @@ set -ex
 script_path="$(dirname "$(realpath "${BASH_SOURCE[0]:-$0}")")"
 cd "$script_path"
 
+set +e
 source ./.env
+set -e
 
 # try this in our current directory first in case the services to restart were started by
 # this project originally
@@ -18,8 +20,9 @@ docker compose --profile "$DOCKER_DEFAULT_PROFILE" down
 docker stop iocaine && docker rm -v iocaine
 
 docker system prune --force
+docker compose --profile "$DOCKER_DEFAULT_PROFILE" build --no-cache
 if [[ "$1" == "-d" ]]; then
-    docker compose --profile "$DOCKER_DEFAULT_PROFILE" up -d
+    docker compose --profile "$DOCKER_DEFAULT_PROFILE" up --force-recreate -d
 else
-    docker compose --profile "$DOCKER_DEFAULT_PROFILE" up
+    docker compose --profile "$DOCKER_DEFAULT_PROFILE" up --force-recreate
 fi

@@ -1,0 +1,3 @@
+*
+!proxy/iocaine/
+!services/git_server/deployment/iocaine/data/

@@ -1,0 +1,9 @@
+prometheus-server metrics {
+    bind "${IOCAINE_METRICS_SCKT}" unix-socket-access="group"
+    persist-path "${IOCAINE_RUN_DEST_DIR}/qmk-metrics.json"
+    persist-interval "1h"
+}
+
+http-server default {
+    use handler-from=nam-shub-of-enki metrics=metrics
+}
