@@ -10,6 +10,10 @@ cd "$script_path"
 set +e
 source ./.env
 set -e
+path_to_utils="$PATH_TO_SERVER_ROOT/$PATH_FROM_ROOT_TO_UTILS"
+
+chmod +x "$path_to_utils/sync_dotenvs.sh"
+"$path_to_utils/sync_dotenvs.sh"
 
 chmod +x ./stop.sh
 ./stop.sh

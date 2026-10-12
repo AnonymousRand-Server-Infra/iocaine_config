@@ -1,17 +1,17 @@
 include:
-  - ${PATH_TO_ROOT_DOCKER_PROJ:?}/${PATH_FROM_ROOT_TO_UTILS:?}/shared_sckts.yaml
+  - ${PATH_TO_SERVER_ROOT:?}/${PATH_FROM_ROOT_TO_UTILS:?}/shared_sckts.yaml
 
 services:
   iocaine:
     container_name: iocaine
     extends:
-      file: ${PATH_TO_ROOT_DOCKER_PROJ:?}/${PATH_FROM_ROOT_TO_UTILS:?}/shared_sckts.yaml
+      file: ${PATH_TO_SERVER_ROOT:?}/${PATH_FROM_ROOT_TO_UTILS:?}/shared_sckts.yaml
       service: shared_sckts_user
     profiles:
       - ${DOCKER_DEFAULT_PROFILE:?}
     build:
       # note that dockerfile cannot access directories above this
-      context: ${PATH_TO_ROOT_DOCKER_PROJ:?}
+      context: ${PATH_TO_SERVER_ROOT:?}
       dockerfile: ${PATH_FROM_ROOT_TO_IOCAINE:?}/Dockerfile
       args:
         CPU_ARCH: ${CPU_ARCH:?}
