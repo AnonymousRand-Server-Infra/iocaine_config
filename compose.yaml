@@ -21,10 +21,10 @@ services:
         IOCAINE_CONFIG_DEST_DIR: ${IOCAINE_CONFIG_DEST_DIR:?}
         IOCAINE_RUN_DEST_DIR: ${IOCAINE_RUN_DEST_DIR:?}
         PATH_FROM_ROOT_TO_IOCAINE: ${PATH_FROM_ROOT_TO_IOCAINE:?}
-    # SYNC: config path inside container
-    command: --config-path ${IOCAINE_CONFIG_DEST_DIR:?}/config.d/
     restart: unless-stopped
     user: ${DOCKER_NONROOT_USER:?}
+    # SYNC: config path inside container
+    command: --config-path ${IOCAINE_CONFIG_DEST_DIR:?}/config.d/
     volumes:
       # container-generated data
       - type: volume
