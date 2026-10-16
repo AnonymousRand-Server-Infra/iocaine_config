@@ -10,8 +10,8 @@ services:
     profiles:
       - ${DOCKER_DEFAULT_PROFILE:?}
     build:
-      # note that dockerfile cannot access directories above this
       context: ${PATH_TO_SERVER_ROOT:?}
+      # needed or else it doesn't work from other directories?
       dockerfile: ${PATH_FROM_ROOT_TO_IOCAINE:?}/Dockerfile
       args:
         CPU_ARCH: ${CPU_ARCH:?}

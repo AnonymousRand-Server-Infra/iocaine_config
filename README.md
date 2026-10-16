@@ -6,9 +6,9 @@ first we discovered fire, and we burned down a forest with a forgotten ember.
 
 then we commercialized lumber, and we stripped the world of its leafy inhabitants faster than ever before.
 
-then we found coal, and we leveled mountains and tore apart the ground beneath our feet to power the lights that extinguished the night sky, our window to the universe.
+then we found coal, and we leveled mountains and tore apart the earth to power the lights that extinguished the night sky, our window to the universe.
 
-then we discovered steam, and we burned the planet fifty times faster than the greatest mass extinction in its history, a history a third as old as time itself, to produce more riches for the rich.
+then we discovered steam, and we burned the planet fifty times faster than the greatest mass extinction in its history, a history a third as old as time itself, to produce riches for the rich.
 
 then we made our way to the heavens, and we wrapped the planet in an impenetrable layer of satellites and metal, in case the universe was still too visible.
 

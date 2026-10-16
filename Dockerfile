@@ -6,9 +6,10 @@ FROM git.madhouse-project.org/iocaine/iocaine:3
 
 ARG DOCKER_ROOT_USER
 ARG DOCKER_NONROOT_USER
+
 USER ${DOCKER_ROOT_USER}
 
-# install busybox's statically-compiled binaries for basic shell commands in anubis image
+# install busybox's statically-compiled binaries for basic shell commands
 COPY --from=busybox /bin/busybox /bin/
 RUN ["/bin/busybox", "--install", "-s", "/bin"]
 
@@ -21,6 +22,8 @@ COPY --from=envsubst /lib/ld-musl-${CPU_ARCH}.so.1 /lib/
 COPY --from=envsubst /lib/libc.musl-${CPU_ARCH}.so.1 /lib/
 # internationalization library, a dependency of `envsubst`
 COPY --from=envsubst /usr/lib/libintl.so.8 /usr/lib/
+
+################################################################################
 
 # merge iocaine configs from all services here
 # `COPY` doesn't work if `CONFIG_SRC_FILES` holds multiple space-separated files, so we instead
@@ -38,7 +41,6 @@ RUN chown -R ${DOCKER_NONROOT_USER} ${IOCAINE_CONFIG_DEST_DIR}
 # (we do this here instead of in a `pre_start` hook since we aren't bind mounting this file,
 # and since `pre_start`s run their own container they cannot access the files copied to this one)
 ARG IOCAINE_RUN_DEST_DIR
-USER ${DOCKER_ROOT_USER}
 RUN mkdir -p ${IOCAINE_RUN_DEST_DIR}
 RUN chown -R ${DOCKER_NONROOT_USER} ${IOCAINE_RUN_DEST_DIR}
 
@@ -48,9 +50,11 @@ RUN chown -R ${DOCKER_NONROOT_USER} ${IOCAINE_RUN_DEST_DIR}
 ARG PATH_FROM_ROOT_TO_IOCAINE
 RUN mkdir -p /tmp_entry/
 COPY ${PATH_FROM_ROOT_TO_IOCAINE}/entrypoint.sh /tmp_entry/entrypoint.sh
-RUN chmod +x /tmp_entry/entrypoint.sh
 RUN chown -R ${DOCKER_NONROOT_USER} /tmp_entry/
+
 USER ${DOCKER_NONROOT_USER}
+
+RUN chmod +x /tmp_entry/entrypoint.sh
 # the original entrypoint for iocaine' docker image is `/bin/iocaine ...`, found using:
 # `docker inspect --format='{{json .Config.Entrypoint}} git.madhouse-project.org/iocaine/iocaine:3`
 # (SYNC); this is needed to make sure original entrypoint still runs after ours!
