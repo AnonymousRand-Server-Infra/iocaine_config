@@ -1,6 +1,7 @@
 #!/bin/sh
 
-set -ex
+set -eu
+set -x
 
 for file in $IOCAINE_CONFIG_DEST_DIR/config.d/*.template; do
     # still need to check if the file is empty in the case of an empty glob
