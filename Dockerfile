@@ -4,6 +4,9 @@ FROM akubrinsky/envsubst AS envsubst
 # :3
 FROM git.madhouse-project.org/iocaine/iocaine:3
 
+################################################################################
+# install binaries
+
 ARG DOCKER_ROOT_USER
 ARG DOCKER_NONROOT_USER
 
@@ -24,8 +27,8 @@ COPY --from=envsubst /lib/libc.musl-${CPU_ARCH}.so.1 /lib/
 COPY --from=envsubst /usr/lib/libintl.so.8 /usr/lib/
 
 ################################################################################
+# merge configs from services
 
-# merge iocaine configs from all services here
 # `COPY` doesn't work if `CONFIG_SRC_FILES` holds multiple space-separated files, so we instead
 # make a temporary bind of the dockerfile's context to `/tmp_bind/` inside the container and `cp`
 
@@ -37,12 +40,18 @@ RUN --mount=type=bind,target=/tmp_bind/ \
     fi
 RUN chown -R ${DOCKER_NONROOT_USER} ${IOCAINE_CONFIG_DEST_DIR}
 
+################################################################################
+# set perms
+
 # set the right permissions for the run volume inside the container
 # (we do this here instead of in a `pre_start` hook since we aren't bind mounting this file,
 # and since `pre_start`s run their own container they cannot access the files copied to this one)
 ARG IOCAINE_RUN_DEST_DIR
 RUN mkdir -p ${IOCAINE_RUN_DEST_DIR}
 RUN chown -R ${DOCKER_NONROOT_USER} ${IOCAINE_RUN_DEST_DIR}
+
+################################################################################
+# entrypoint
 
 # custom entrypoint that runs `envsubst` on config files
 # we do that in entrypoint instead of in `pre_start` for the same reason as perms changing above,
